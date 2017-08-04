@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<datasources xmlns="http://www.jboss.org/ironjacamar/schema">
+
+	<!-- todo: only bootstrap here, add the other one as other cells + domain-->
+	<datasource jta="false" jndi-name="java:/MedCoBootStrapDS"
+		pool-name="MedCoBootStrapDS" enabled="true" use-ccm="false">
+		<connection-url>jdbc:postgresql://i2b2-database:5432/i2b2demotest</connection-url>
+		<driver-class>org.postgresql.Driver</driver-class>
+		<driver>postgresql-9.2-1002.jdbc4.jar</driver>
+		<security>
+			<user-name>medco_data</user-name>
+			<password>demouser</password>
+		</security>
+		<validation>
+			<validate-on-match>false</validate-on-match>
+			<background-validation>false</background-validation>
+		</validation>
+		<statement>
+			<share-prepared-statements>false</share-prepared-statements>
+		</statement>
+	</datasource>
+
+</datasources>

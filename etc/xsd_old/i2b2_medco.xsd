@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+    xmlns:medco="http://lca1.epfl.ch/xsd/medco/i2b2/"
+    targetNamespace="http://lca1.epfl.ch/xsd/medco/i2b2/">
+    
+    <!-- metadata -->
+    <xs:element name="medco_metadata_request" type="xs:string" fixed=""/>
+    <xs:element name="medco_metadata" type="medco:medco_metadataType"/>
+
+    <xs:complexType name="medco_metadataType">
+        <xs:sequence>
+            <xs:element name="genomic_annotations_metadata" type="medco:genomic_annotations_metadataType"/>
+            <xs:element name="clinical_ontology_metadata" type="medco:clinical_ontology_metadataType"/>
+        </xs:sequence>
+    </xs:complexType>
+
+    <xs:complexType name="genomic_annotations_metadataType">
+        <xs:all>
+            <xs:element name="nice_name" type="xs:string"/>
+            <xs:element name="unique_name" type="xs:string"/>
+            <xs:element name="description" type="xs:string"/>
+            <xs:element name="attributes">
+                <xs:complexType>
+                    <xs:sequence>
+                        <xs:element name="attribute" type="medco:genomic_annotations_attributeType" maxOccurs="unbounded"/>
+                    </xs:sequence>
+                </xs:complexType>
+            </xs:element>
+            <xs:element name="identifying_attributes_unique_name">
+                <xs:complexType> <!-- add variant id structure / how to construct TODO -->
+                    <xs:all>
+                        <xs:element name="chromosome_nb" type="xs:string"/>
+                        <xs:element name="start_position" type="xs:string"/>
+                        <xs:element name="ref_allele" type="xs:string"/>
+                        <xs:element name="alt_allele" type="xs:string"/>
+                    </xs:all>
+                </xs:complexType>
+            </xs:element>
+        </xs:all>
+    </xs:complexType>
+
+    <xs:complexType name="genomic_annotations_attributeType">
+        <xs:all>
+            <xs:element name="nice_name" type="xs:string"/>
+            <xs:element name="unique_name" type="xs:string"/>
+            <xs:element name="origin" type="xs:string"/>
+        </xs:all>
+        <xs:attribute name="encrypted" type="xs:boolean" use="required"/>
+        <xs:attribute name="type" type="medco:data_typesType" use="required"/>
+    </xs:complexType>
+
+    <xs:simpleType name="data_typesType">
+        <xs:restriction base="xs:token">
+            <xs:enumeration value="STRING"/>
+            <xs:enumeration value="BOOL"/>
+            <xs:enumeration value="INT8"/>
+            <xs:enumeration value="INT16"/>
+            <xs:enumeration value="INT32"/>
+            <xs:enumeration value="INT64"/>
+            <xs:enumeration value="FLOAT32"/>
+            <xs:enumeration value="FLOAT64"/>
+        </xs:restriction>
+    </xs:simpleType>
+
+    <xs:complexType name="clinical_ontology_metadataType">
+        <xs:all>
+            <xs:element name="nice_name" type="xs:string"/>
+            <xs:element name="unique_name" type="xs:string"/>
+            <xs:element name="description" type="xs:string"/>     
+            <xs:element name="project_path" type="xs:string"/><!-- XXX check if sth else is needed -->
+        </xs:all>
+    </xs:complexType>
+</xs:schema>

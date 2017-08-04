@@ -1,0 +1,13 @@
+<!--
+    This is Axis2 the service file for the medco cell, with an interface compatible with the crc cell.
+    It supports only aggregate queries.
+-->
+<service name="MedCoQueryService" scope="request">
+    <description>
+        Web Service for ch.epfl.lca1.medco
+    </description>
+    <parameter name="ServiceClass">ch.epfl.lca1.medco.axis2.MedCoQueryService</parameter>
+    <operation name="request">
+        <messageReceiver class="org.apache.axis2.receivers.RawXMLINOutMessageReceiver"/>
+    </operation>
+</service>

@@ -1,0 +1,191 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project basedir="." default="all" name="MedCo-I2b2 Cell">
+
+    <target name="all" depends="dist">
+    </target>
+
+    <!-- =================================================================== -->
+    <!-- 								PROPERTIES  						 -->
+    <!-- =================================================================== -->
+    <property file="build.properties"/>
+    <property name="Project" value="ch.epfl.lca1.medco" />
+    <property name="Name" value="MedCo" />
+
+    <property name="src"        value="src"/>
+    <property name="lib"        value="lib"/>
+    <property name="etc"        value="etc"/>
+    <property name="classes"    value="build/classes"/>
+    <property name="dist"       value="build/dist"/>
+
+    <property name="javac.debug" value="true" />
+    <property name="javac.optimize" value="true" />
+
+    <property name="ch.epfl.lca1.medco.applicationdir" value="${jboss.home}/standalone/configuration/medcoapp" />
+
+    <!-- =================================================================== -->
+    <!-- 								INIT 								 -->
+    <!-- =================================================================== -->
+    <target name="init" description="Prepare build environment">
+
+        <mkdir dir="${dist}"/>
+        <mkdir dir="${classes}"/>
+
+        <path id="classpath">
+            <fileset dir="./${lib}">
+                <include name="**/*.jar" />
+            </fileset>
+
+            <pathelement location="${classes}" />
+        </path>
+
+    </target>
+
+
+    <!-- =================================================================== -->
+    <!-- 								CLEAN 								 -->
+    <!-- =================================================================== -->
+    <target name="clean" depends="init" description="Clean build products">
+        <echo message="Cleaning non-source directories in ${basedir}"/>
+        <delete dir="${classes}"/>
+        <delete dir="${dist}"/>
+    </target>
+
+
+
+    <!-- =================================================================== -->
+    <!-- 								COMPILE								 -->
+    <!-- =================================================================== -->
+    <target name="compile" depends="init" description="Compile project">
+        <echo message="${Name}: Compiling Java sources" />
+
+        <javac destdir="${classes}" optimize="${javac.optimize}" debug="${javac.debug}">
+            <src path="${src}/server" />
+            <src path="${src}/client" />
+            <src path="${src}/test" />
+            <classpath refid="classpath" />
+        </javac>
+    </target>
+
+
+    <!-- =================================================================== -->
+    <!-- 								DIST 								 -->
+    <!-- =================================================================== -->
+    <target name="dist" description="Package compiled files">
+        <echo message="${Name}: Packaging compiled files" />
+
+        <antcall target="axis2aar" />
+        <antcall target="jar_core" />
+        <antcall target="dist-server" />
+    </target>
+
+    <!-- Axis2 archive file -->
+    <target name="axis2aar" depends="compile" description="Create Axis2 archive file">
+        <jar compress="true" jarfile="${dist}/${Name}.aar">
+
+            <fileset dir="${classes}">
+                <include name="**/**" />
+                <exclude name="**/datavo/**" />
+            </fileset>
+
+            <zipfileset dir="${etc}/axis2/" prefix="META-INF" includes="services.xml" />
+            <zipfileset dir="./${lib}/" prefix="lib" includes="*.jar"/>
+        </jar>
+    </target>
+
+    <!-- Jar core file -->
+    <target name="jar_core" depends="compile" description="Create MedCo core jar">
+        <jar compress="true" jarfile="${dist}/${Name}-core.jar">
+
+            <fileset dir="${classes}">
+                <include name="**/datavo/**" />
+                <include name="**/**" />
+            </fileset>
+
+            <zipfileset dir="${etc}/axis2/" prefix="META-INF" includes="services.xml" />
+        </jar>
+    </target>
+
+    <!-- Jar server file -->
+    <target name="dist-server" description="Create MedCo server jar">
+        <jar compress="true" jarfile="${dist}/${Name}-Server.jar">
+
+            <fileset dir="${etc}/spring/medcoapp">
+                <include name="**" />
+            </fileset>
+
+        </jar>
+    </target>
+
+
+    <!-- =================================================================== -->
+    <!-- 								JBOSS DEPLOY 						 -->
+    <!-- =================================================================== -->
+    <target name="deploy" description="Deployment step:copy distribution jar files to app server">
+        <echo message="${Name}: Copying archive package to app server ${jboss.home}" />
+
+        <!-- deploy axis2-wide libraries -->
+        <copy todir="${jboss.home}/standalone/deployments/${axis2.war.name}/WEB-INF/lib">
+            <fileset file="${dist}/${Name}-core.jar" />
+            <fileset dir="${lib}/to_deploy">
+                <include name="*.jar" />
+            </fileset>
+        </copy>
+
+        <!-- deploy .aar service file -->
+        <copy todir="${jboss.home}/standalone/deployments/${axis2.war.name}/WEB-INF/services">
+            <fileset dir="${dist}">
+                <include name="**/**.aar" />
+            </fileset>
+        </copy>
+
+        <!-- deploy datasource -->
+        <copy todir="${jboss.home}/standalone/deployments">
+            <fileset dir="${etc}/jboss" />
+        </copy>
+
+        <!-- deploy config files -->
+        <echo message="copying property files to ${ch.epfl.lca1.medco.applicationdir}"/>
+        <copy todir="${ch.epfl.lca1.medco.applicationdir}">
+            <fileset dir="${etc}/spring/medcoapp">
+                <exclude name="medco_application_directory.properties" />
+            </fileset>
+        </copy>
+    </target>
+
+
+    <!-- =================================================================== -->
+    <!-- 			RUN JUNIT TESTS AND GENERATE REPORT			 			 -->
+    <!-- =================================================================== -->
+    <target name="test_TODO" depends="compile" description="Compile and run JUnit tests and testcases">
+        <echo message="${Name}: Running test cases!" />
+        <property name="reports.dir" value="${report}" />
+
+        <!-- run the unit tests -->
+        <junit fork="yes" haltonfailure="no" maxmemory="2048M" printsummary="on" errorProperty="test.failed" failureProperty="test.failed" showoutput="false">
+            <formatter type="xml" />
+            <jvmarg value="-Dtestfiledir=${testfiledir}" />
+            <jvmarg value="-Dtesthost=${testhost}" />
+            <jvmarg value="-Djava.endorsed.dirs=endorsed_lib" />
+            <!--<test name="AllTests" todir="${report.dir}"/>-->
+            <batchtest fork="yes" todir="${reports.dir}">
+                <fileset dir="${src}/test">
+                    <include name="**/SetfinderQueryTest.java" />
+                    <exclude name="**/AllTests.java" />
+                </fileset>
+            </batchtest>
+            <classpath>
+                <path refid="classpath" />
+                <pathelement location="${etc}/spring/medcoapp" />
+            </classpath>
+        </junit>
+        <!-- create the junit test report -->
+        <echo message="${Name}: Generating reports!" />
+        <junitreport>
+            <fileset dir="${reports.dir}">
+                <include name="TEST-*.xml" />
+            </fileset>
+            <report format="frames" todir="${reports.dir}" />
+        </junitreport>
+        <fail message="Tests failed." if="test.failed" />
+    </target>
+</project>
