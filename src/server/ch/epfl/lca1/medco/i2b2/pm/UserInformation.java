@@ -35,7 +35,7 @@ public class UserInformation {
 
     public String getUsername() {
         // todo: implement me
-        return "Jean Ça";
+        return "Jean Ca";
     }
 
     public String getUserPublicKey() {
