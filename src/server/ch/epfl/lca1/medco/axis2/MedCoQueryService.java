@@ -17,8 +17,6 @@ import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamReader;
 
 import ch.epfl.lca1.medco.util.Logger;
-import ch.epfl.lca1.medco.util.MedCoUtil;
-import ch.epfl.lca1.medco.util.StopWatch;
 import org.apache.axiom.om.OMElement;
 import org.apache.axiom.om.impl.builder.StAXOMBuilder;
 
@@ -50,9 +48,6 @@ public class MedCoQueryService {
 	 * @return response message in wrapped inside OMElement
 	 */
 	public OMElement request(OMElement omElement) {
-
-	    StopWatch.resetTimers();
-        StopWatch.overall.start("Overall (axis2 in/out)");
 
 		OMElement response = handleRequest(RequestType.MEDCO_QUERY, omElement);
 

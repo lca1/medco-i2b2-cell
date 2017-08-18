@@ -1,12 +1,18 @@
 package ch.epfl.lca1.medco.unlynx;
 
 import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
-import ch.epfl.lca1.medco.util.Logger;
-import ch.epfl.lca1.medco.util.MedCoUtil;
+import ch.epfl.lca1.medco.util.*;
 import ch.epfl.lca1.medco.util.exceptions.I2B2XMLException;
+import ch.epfl.lca1.medco.util.exceptions.UnlynxException;
+import org.jdom.Document;
+import org.jdom.Element;
+import org.jdom.JDOMException;
+import org.jdom.input.SAXBuilder;
 
 /**
  * Manages connection to the local Unlynx client.
@@ -15,235 +21,195 @@ import ch.epfl.lca1.medco.util.exceptions.I2B2XMLException;
  * Start query by using executeQuery() and then join() to wait for the process to end.
  * Next check with getQueryState() the state of the query and finally get the end result with getQueryResult().
  */
-public class UnlynxClient extends Thread {
+public class UnlynxClient {
 
-    /** Query that will be executed. */
-	private UnlynxQuery query;
+	private String binPath;
+	private String groupFilePath;
+	private int debugLevel;
+	private int entryPointIdx;
+	private int computeProofsFlag;
+	private long timeoutSeconds;
 
-	/** Result of the query after the execution. */
-	private UnlynxQueryResult queryResult;
-	
-	private static MedCoUtil util = MedCoUtil.getInstance();
+	private String lastTimingMeasurements;
 
-	/** Enum describing the state of the query. */
-	public enum QueryState {
-		NOT_STARTED, STARTED, TIMEDOUT, ERROR_INTERRUPTED, ERROR_UNLYNX, ERROR_COMM_UNLYNX, ERROR_INVALID_RESULT, COMPLETED
+	public UnlynxClient(String binPath, String groupFilePath, int debugLevel, int entryPointIdx, int computeProofsFlag, long timeoutSeconds) {
+        this.binPath = binPath;
+        this.groupFilePath = groupFilePath;
+        this.debugLevel = debugLevel;
+        this.entryPointIdx = entryPointIdx;
+        this.computeProofsFlag = computeProofsFlag;
+        this.timeoutSeconds = timeoutSeconds;
 	}
 
-	/** State of the query. */
-	private QueryState queryState;
+	public String getLastTimingMeasurements() {
+	    return lastTimingMeasurements;
+    }
 
-	/**
-	 * Private constructor to allow initialization only through startQuery().
-	 * 
-	 * @param query the unlynx query to execute
-	 */
-	private UnlynxClient(UnlynxQuery query) {
-		this.query = query;
-		this.queryState = QueryState.NOT_STARTED;
-	}
-	
-	/**
-	 * Execute the query by starting the thread.
-     * Use UnlynxClient.join() to wait for query completion.
-     *
-     * @param query the query to execute
-     * @return the (probably) running client
-	 */
-	public static UnlynxClient executeQuery(UnlynxQuery query) {
-		if (query == null) {
-			throw Logger.error(new IllegalArgumentException("query can not be null"));
-		}
-		
-		UnlynxClient client = new UnlynxClient(query);
-		client.start();
-		return client;
-	}
+	public List<String> computeDistributedDetTags(String queryId, List<String> encryptedQueryItems) throws UnlynxException, I2B2XMLException {
+
+	    if (encryptedQueryItems.size() == 0) {
+	        return new ArrayList<>();
+        }
+
+	    // generate input stdout
+        StringBuilder sb = new StringBuilder();
+
+        sb.append(Constants.DDT_REQ_XML_START_TAG + "\n");
+            sb.append("<id>");
+            sb.append(queryId);
+            sb.append("</id>\n");
+            sb.append("<enc_values>\n");
+            for (String encValue : encryptedQueryItems) {
+                sb.append("<enc_value>");
+                sb.append(encValue);
+                sb.append("</enc_value>\n");
+            }
+            sb.append("</enc_values>\n");
+        sb.append(Constants.DDT_REQ_XML_END_TAG + "\n");
+
+        // run unlynx
+        SystemBinaryRunThread process = new SystemBinaryRunThread(getUnlynxRunCall(), sb.toString(), timeoutSeconds);
+        process.start();
+        process.waitForCompletion();
+
+        // process result
+        if (process.getRunState() == SystemBinaryRunThread.RunState.COMPLETED) {
+            Logger.info("Unlynx DDT request successfully completed");
+            return parseDistributedDetTagsCallResult(process.getStdIn());
+        } else {
+            throw Logger.error(new UnlynxException("Unlynx DDT request failed, run state is: " + process.getRunState().toString()));
+        }
+    }
+
+    public String aggregateData(String queryId, String clientPubKey, List<String> encDummyFlags) throws UnlynxException, I2B2XMLException {
+
+        // generate input stdout
+        StringBuilder sb = new StringBuilder();
+
+        sb.append(Constants.AGG_REQ_XML_START_TAG + "\n");
+        sb.append("<id>");
+        sb.append(queryId);
+        sb.append("</id>\n");
+
+        sb.append("<client_public_key>");
+        sb.append(clientPubKey);
+        sb.append("</client_public_key>");
+
+        sb.append("<enc_dummy_flags>\n");
+        for (String encFlag : encDummyFlags) {
+            sb.append("<enc_dummy_flag>");
+            sb.append(encFlag);
+            sb.append("</enc_dummy_flag>\n");
+        }
+        sb.append("</enc_dummy_flags>\n");
+        sb.append(Constants.AGG_REQ_XML_END_TAG + "\n");
+
+        // run unlynx
+        SystemBinaryRunThread process = new SystemBinaryRunThread(getUnlynxRunCall(), sb.toString(), timeoutSeconds);
+        process.start();
+        process.waitForCompletion();
+
+        // process result
+        if (process.getRunState() == SystemBinaryRunThread.RunState.COMPLETED) {
+            Logger.info("Unlynx DDT request successfully completed");
+            return parseAggregateCallResult(process.getStdIn());
+        } else {
+            throw Logger.error(new UnlynxException("Unlynx DDT request failed, run state is: " + process.getRunState().toString()));
+        }
+    }
 	
 	/**
 	 * Construct the binary system call of the Unlynx client.
 	 * 
 	 * @return array of tokens for system call to the Unlynx client
 	 */
-	private String[] constructSystemCall() {
+	private String[] getUnlynxRunCall() {
 		ArrayList<String> arr = new ArrayList<>();
 		
-		arr.add(util.getUnlynxBinPath());
+		arr.add(binPath);
 
-		// unlynx configuration
 		arr.add("-d");
-		arr.add(util.getUnlynxDebugLevel() + "");
+		arr.add(debugLevel + "");
 
 		arr.add("run");
         arr.add("-f");
-		arr.add(util.getUnlynxGroupFilePath());
+		arr.add(groupFilePath);
 		arr.add("--entryPointIdx");
-		arr.add(util.getUnlynxEntryPointIdx() + "");
+		arr.add(entryPointIdx + "");
 		arr.add("--proofs");
-		arr.add(util.getUnlynxProofsFlag() + "");
+		arr.add(computeProofsFlag + "");
 
-		Logger.info("Unlynx binary call is: " + arr.toString());
 		return arr.toArray(new String[arr.size()]);
 	}
-	
-	/**
-	 * Run thread to execute query to Unlynx.
-	 * Execute the unlynxI2b2 client binary and send the query via stdin, get the result via stdout.
-     * Must be used through executeQuery().
-	 */
-	@Override
-	public void run() {
-		Process p = null;
+
+    private List<String> parseDistributedDetTagsCallResult(String stdinString) throws UnlynxException, I2B2XMLException {
+
+	    // XXX: hackish
+        InputStream stdin = new ByteArrayInputStream(stdinString.getBytes(StandardCharsets.UTF_8));
+        String resultXMLString = XMLUtil.xmlStringFromStream(stdin, Constants.DDT_RESP_XML_START_TAG, Constants.DDT_RESP_XML_END_TAG, false);
+
+        SAXBuilder sxb = new SAXBuilder();
         try {
-        	
-        	// start client
-        	Logger.info("Calling Unlynx client (query " + query.getQueryID() + ")");
-        	Logger.debug("Query: " + query);
-        	ProcessBuilder pb = new ProcessBuilder(constructSystemCall()).redirectErrorStream(true);
-        	p = pb.start();
-        	if (p.isAlive()) {
-        		queryState = QueryState.STARTED;
-        	} else {
-        		throw new IOException("Query process not alive after start (wrong binary path?)");
-        	}
-            
-            Logger.debug("Writing query to input of process as UTF-8 string.");
-            BufferedWriter buffStdOut = new BufferedWriter(new OutputStreamWriter(p.getOutputStream(), "UTF-8"));
-            buffStdOut.write(query.toUnlynxI2b2XML());
-			Logger.debug("Query written, closing the streams to flush");
-			buffStdOut.close();
-			Logger.debug("buffStdOut flushed");
-			p.getOutputStream().close();
-			Logger.debug("p.getOutputStream flushed");
+            Document doc = sxb.build(new ByteArrayInputStream(resultXMLString.getBytes(StandardCharsets.UTF_8)));
+            Element root = doc.getRootElement();
 
-			Logger.info("Waiting for query completion (query " + query.getQueryID() + ")");
-			StringBuilder accumulatedOutput = new StringBuilder();
-        	boolean hasTimedOut = waitForProcess(p, query.getTimeoutSeconds(), accumulatedOutput);
-            
-            // handle result
-        	if (hasTimedOut) {
-        		Logger.warn("Query timeout (query " + query.getQueryID() + ")");
-				queryResult = new UnlynxQueryResult(accumulatedOutput.toString());
-				Logger.debug("Query result parsing successful (query " + query.getQueryID() + ")");
-				queryState = QueryState.TIMEDOUT;
-        		p.destroy();
-        		
-        	} else if (p.exitValue() != 0) { 
-    			Logger.error("Query finished with error (query " + query.getQueryID() + ")");
-				queryResult = new UnlynxQueryResult(accumulatedOutput.toString());
-				Logger.debug("Query result parsing successful (query " + query.getQueryID() + ")");
-				queryState = QueryState.ERROR_UNLYNX;
-        		
-    		} else {
-        		Logger.info("Query completed successfully (query " + query.getQueryID() + ")");
-        		queryResult = new UnlynxQueryResult(accumulatedOutput.toString());
-        		Logger.debug("Query result parsing successful (query " + query.getQueryID() + ")");
-        		queryState = QueryState.COMPLETED;
-    		}
-        	
-        } catch (IOException e) {
-    		Logger.error("Query error while communicating with Unlynx (query " + query.getQueryID() + "): " + e.getMessage());
-    		queryState = QueryState.ERROR_COMM_UNLYNX;
-    		if (p != null) {
-                p.destroy();
+            // sanity check
+            if (!root.getName().equals(Constants.DDT_RESP_XML_EL)) {
+                throw Logger.error(new I2B2XMLException("XML not properly formed."));
             }
-            
-        } catch (InterruptedException e) {
-    		Logger.error("Query interrupted (query " + query.getQueryID() + "): " + e.getMessage());
-    		queryState = QueryState.ERROR_INTERRUPTED;
-        	p.destroy();
-        	
-        } catch (I2B2XMLException e) {
-			Logger.error("Query result could not be parsed (query " + query.getQueryID() + "): " + e.getMessage());
-    		queryState = QueryState.ERROR_INVALID_RESULT;
 
-		} finally {
-        	if (p != null && p.isAlive()) {
-        		Logger.warn("Unlynx client process seems to be still alive, attempting to kill it...");
-        		p.destroyForcibly();
-        	}
-        }
-	}
-
-    /**
-     * Augmented version of Process.waitFor.
-     *
-     * @return true if the process has timed out, false otherwise
-     */
-	private boolean waitForProcess(Process p, long timeoutSec, StringBuilder accumulatedOutput) throws InterruptedException {
-		long startTime = System.nanoTime();
-		TimeUnit unit = TimeUnit.SECONDS;
-        long rem = unit.toNanos(timeoutSec);
-
-        BufferedReader buffStdIn = new BufferedReader(new InputStreamReader(p.getInputStream()));
-
-		do {
-			try {
-				p.exitValue();
-				readAllLines(buffStdIn, accumulatedOutput);
-				return false;
-			} catch(IllegalThreadStateException ex) {
-				if (rem > 0)
-					Thread.sleep(
-							Math.min(TimeUnit.NANOSECONDS.toMillis(rem) + 1, 100));
-			}
-			rem = unit.toNanos(timeoutSec) - (System.nanoTime() - startTime);
-			readAllLines(buffStdIn, accumulatedOutput);
-		} while (rem > 0);
-
-		readAllLines(buffStdIn, accumulatedOutput);
-		return true;
-	}
-
-    /**
-     * Read all available lines of the {@link BufferedReader} and accumulate then in the {@link StringBuilder}.
-     * In case of failure, fails silently.
-     *
-     * @param buffStdIn
-     * @param accumulatedOutput
-     */
-	private void readAllLines(BufferedReader buffStdIn, StringBuilder accumulatedOutput) {
-	    try {
-            if (buffStdIn.ready()) {
-                while (buffStdIn.ready()) {
-                    String line = buffStdIn.readLine();
-                    if (line != null) {
-                        accumulatedOutput.append(line);
-                        Logger.debug("stdin line: " + line);
-                    }
-                }
+            // error check, exception if yes
+            String errorMsg = root.getChildTextNormalize("error");
+            if (errorMsg != null && !errorMsg.trim().isEmpty()) {
+                throw Logger.error(new UnlynxException(errorMsg));
             }
-        } catch (IOException e) {
-	        Logger.warn("readAllLines got IOException", e);
+
+            // extract tagged values
+            List encValuesXml = root.getChild("enc_values").getChildren("enc_value");
+            List<String> encValues = new ArrayList<>(encValuesXml.size());
+            for (Object anEncValuesXml : encValuesXml) {
+                encValues.add(((Element) anEncValuesXml).getValue());
+            }
+
+            // extract times
+            lastTimingMeasurements = root.getChildText("times");
+
+            return encValues;
+        } catch(IOException | JDOMException e) {
+            throw Logger.error(new I2B2XMLException("XML parsing error", e));
         }
     }
 
-	public void waitForCompletion() {
-		try {
-			this.join();
-		} catch (InterruptedException e) {
-			Logger.warn(e);
-		}
-	}
-    /**
-     * @return the query state
-     */
-	public QueryState getQueryState() {
-	    return queryState;
-	}
+    private String parseAggregateCallResult(String stdinString) throws UnlynxException, I2B2XMLException {
 
-    /**
-     * @return the query result if the query has a query result, null if not
-     */
-    public UnlynxQueryResult getQueryResult() {
-        switch (queryState) {
-            case COMPLETED:
-            case TIMEDOUT:
-            case ERROR_UNLYNX:
-                return queryResult;
+        // XXX: hackish
+        InputStream stdin = new ByteArrayInputStream(stdinString.getBytes(StandardCharsets.UTF_8));
+        String resultXMLString = XMLUtil.xmlStringFromStream(stdin, Constants.AGG_RESP_XML_START_TAG, Constants.AGG_RESP_XML_END_TAG, false);
 
-            default:
-                return null;
+        SAXBuilder sxb = new SAXBuilder();
+        try {
+            Document doc = sxb.build(new ByteArrayInputStream(resultXMLString.getBytes(StandardCharsets.UTF_8)));
+            Element root = doc.getRootElement();
+
+            // sanity check
+            if (!root.getName().equals(Constants.AGG_RESP_XML_EL)) {
+                throw Logger.error(new I2B2XMLException("XML not properly formed."));
+            }
+
+            // error check, exception if yes
+            String errorMsg = root.getChildTextNormalize("error");
+            if (errorMsg != null && !errorMsg.trim().isEmpty()) {
+                throw Logger.error(new UnlynxException(errorMsg));
+            }
+
+            // extract times
+            lastTimingMeasurements = root.getChildText("times");
+
+            // extract aggregated value
+            return root.getChildText("aggregate");
+
+        } catch(IOException | JDOMException e) {
+            throw Logger.error(new I2B2XMLException("XML parsing error", e));
         }
     }
 }

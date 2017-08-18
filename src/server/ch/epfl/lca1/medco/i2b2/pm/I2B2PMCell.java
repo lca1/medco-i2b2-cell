@@ -1,5 +1,6 @@
 package ch.epfl.lca1.medco.i2b2.pm;
 
+import edu.harvard.i2b2.crc.datavo.i2b2message.MessageHeaderType;
 import edu.harvard.i2b2.crc.datavo.i2b2message.RequestMessageType;
 import edu.harvard.i2b2.crc.datavo.pm.ProjectType;
 import org.apache.axiom.om.OMElement;
@@ -55,7 +56,7 @@ public class I2B2PMCell extends I2B2Cell {
 //		return response;
 //	}
 
-	protected I2B2PMCell() {
+	public I2B2PMCell(String pmCellUrl, UserAuthentication medcoI2b2Auth) {
 		super(medCoUtil.getProjectManagementCellUrl(), null); // get url
 	}
 
@@ -87,6 +88,11 @@ public class I2B2PMCell extends I2B2Cell {
 		
 		
 		return null;
+	}
+
+	public UserInformation getUserInformation(MessageHeaderType messageHeader) {
+		//todo: implement me
+		return new UserInformation();
 	}
 	/*
 	public static ProjectType callUserProject(SecurityType securityType,  String projectId ) throws AxisFault, I2B2Exception {

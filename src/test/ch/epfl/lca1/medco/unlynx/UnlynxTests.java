@@ -40,7 +40,7 @@ public class UnlynxTests {
 	
 	@Test
 	public void UnlynxQueryResultsTests() { 
-		
+		/*
 		try {
 			UnlynxQueryResult queryResultOK = new UnlynxQueryResult(queryResultStringOK);
 			assertTrue(queryResultOK.getQueryId().equals("query ID"));
@@ -86,7 +86,7 @@ public class UnlynxTests {
 			System.out.println(e);
 			assertTrue(false);
 		}
-
+*/
 	}
 
 	/*
@@ -124,7 +124,7 @@ public class UnlynxTests {
 	<result_mode>0</result_mode>
 	</medco_query>
 	 */
-
+/*
 	private UnlynxQuery getGoodQuery() {
 
 	    List<String> encWhereValues = new ArrayList<>();
@@ -169,7 +169,7 @@ public class UnlynxTests {
         );
 		return q;
 	}
-	
+	*/
 	@Test
 	public void UnlynxQueryTests() { 
 
@@ -206,7 +206,7 @@ public class UnlynxTests {
             assertTrue(false);
         }
 	}
-	
+	/*
 	@Test
 	public void UnlynxClientTests() throws InterruptedException {
 
@@ -245,5 +245,5 @@ public class UnlynxTests {
 
     }
 
-
+*/
 }

@@ -3,7 +3,7 @@ package ch.epfl.lca1.medco;
 /**
  * Created by jagomes on 26/07/17.
  */
-public class Timers {
+public class ClientTimers {
 
     static double tt                = 0; // Overall time
 
@@ -35,7 +35,7 @@ public class Timers {
     static double ksct              = 0; // Total key switching communication time
 
 
-    public Timers(){}
+    public ClientTimers(){}
 
     public void Divide(double nbrServers, double d){
         double num = nbrServers * d;

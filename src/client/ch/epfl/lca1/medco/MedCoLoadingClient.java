@@ -8,7 +8,6 @@ import ch.epfl.lca1.medco.i2b2.pm.UserAuthentication;
 import ch.epfl.lca1.medco.loader.DataType;
 import ch.epfl.lca1.medco.unlynx.UnlynxDecrypt;
 import ch.epfl.lca1.medco.util.MedCoUtil;
-import ch.epfl.lca1.medco.util.StopWatch;
 import ch.epfl.lca1.medco.util.exceptions.UnlynxException;
 import com.opencsv.CSVReader;
 import edu.harvard.i2b2.common.exception.I2B2Exception;
@@ -79,7 +78,7 @@ public class MedCoLoadingClient {
         // change me node number
         loadSrv1Conf();
 
-        StopWatch.misc.start("clear dataset loading: clinical ontology");
+        //StopWatch.misc.start("clear dataset loading: clinical ontology");
         String
                 dir = "/home/misbach/repositories/i2b2-core-server-medco/ch.epfl.lca1.medco/testfiles/datasets/full/skcm_broad/",
                 nodeId = "1",
@@ -91,17 +90,17 @@ public class MedCoLoadingClient {
 
         loader1.loadClinicalFileOntology(dir + "data_clinical_skcm_broad.txt", '\t', '\u0000', 5, typesClinical);
         System.out.println("Node " + nodeId + ": ontology clinical OK");
-        StopWatch.misc.stop();
+        //StopWatch.misc.stop();
 
-        StopWatch.misc.start("clear dataset loading: clinical data");
+        //StopWatch.misc.start("clear dataset loading: clinical data");
         loader1.loadClinicalFileData(dir + "data_clinical_skcm_broad.txt", '\t', '\u0000', 5, typesClinical);
         System.out.println("Node " + nodeId + ": clinical data OK");
 
         // for each entry of the dataset:
         // generate ontology entry, generate concept dim entry generate obs fact
-        StopWatch.misc.stop();
+        //StopWatch.misc.stop();
 
-        StopWatch.misc.start("clear dataset loading: variants data");
+        //StopWatch.misc.start("clear dataset loading: variants data");
         MedCoDatabase dao = new MedCoDatabase();
         //CSVReader genomicReader = new CSVReader(new FileReader(dir + "data_mutations_extended_skcm_broad_clear_i2b2_part"+ nodeId + "_"+datasetSplit+".txt"), '\t', '\u0000', 0);
         CSVReader genomicReader = new CSVReader(new FileReader(dir + "data_mutations_extended_skcm_broad_clear_i2b2.txt"), '\t', '\u0000', 0);
@@ -162,7 +161,7 @@ public class MedCoLoadingClient {
         dao.sqlUpdate("insert into i2b2demodata.concept_dimension(concept_path, concept_cd, name_char, import_date)" +
                 "select c_fullname, c_basecode, c_name, update_date from i2b2metadata.clinical_non_sensitive where c_basecode is not null;");//c_fullname like '%VARIANT_ID%' and
 
-        StopWatch.misc.stop();
+        //StopWatch.misc.stop();
 
 
 
@@ -237,7 +236,7 @@ public class MedCoLoadingClient {
 
     public static void nodeLoading(String nodeId, String datasetId, String clinicalPath_full, String clinicalPath_part, String genomicPath_part) throws I2B2Exception, IOException, UnlynxException {
         System.out.println("Starting loading node " + nodeId);
-        MedCoDataLoader loader1 = new MedCoDataLoader("chuv" + nodeId, datasetId, "i2b2demotest", "Demo", "demo", "demouser");
+        MedCoDataLoader loader1 = new MedCoDataLoader("chuv" + nodeId, datasetId, "medcodeployment", "Demo", "demo", "demouser");
 
         loader1.loadClinicalFileOntology(clinicalPath_full, '\t', '\u0000', 5, typesClinical);
         System.out.println("Node " + nodeId + ": ontology OK");
@@ -264,7 +263,7 @@ public class MedCoLoadingClient {
 
         MedCoUtil.getTestInstance().setProperty(MedCoUtil.UNLYNX_BINARY_PATH_PROPERTIES, "unlynxI2b2"); // assumed in bin path
         MedCoUtil.getTestInstance().setProperty(MedCoUtil.UNLYNX_GROUP_FILE_PATH_PROPERTIES,
-                "/home/misbach/repositories/i2b2-core-server-medco/ch.epfl.lca1.medco/deployment/configuration/keys/icclusters-9/icclusters-9-group.toml");
+                "/home/misbach/repositories/medco-deployment/configuration/keys/dev-3nodes-samehost/group.toml");
 
         MedCoUtil.getTestInstance().setProperty(MedCoUtil.UNLYNX_DEBUG_LEVEL_PROPERTIES, "5");
         MedCoUtil.getTestInstance().setProperty(MedCoUtil.UNLYNX_PROOFS_PROPERTIES, "0");
@@ -272,7 +271,7 @@ public class MedCoLoadingClient {
 
         PGSimpleDataSource ds = new PGSimpleDataSource();
         ds.setServerName(hostname);
-        ds.setDatabaseName("i2b2demotest");
+        ds.setDatabaseName("medcodeployment");
         ds.setPortNumber(psqlPort);
         ds.setUser("postgres");
         ds.setPassword("prigen2017");
@@ -282,8 +281,8 @@ public class MedCoLoadingClient {
     }
 
     protected static void loadSrv1Conf() {
-        loadMedCoConf("iccluster036.iccluster.epfl.ch", 8080,
-                5432, "0");
+        loadMedCoConf("localhost", 8082,
+                5434, "0");
     }
 
     protected static void loadSrv3Conf() {

@@ -9,7 +9,7 @@
  */
 package ch.epfl.lca1.medco.axis2;
 
-import ch.epfl.lca1.medco.i2b2.MessagesUtil;
+import ch.epfl.lca1.medco.StandardQuery;
 import ch.epfl.lca1.medco.i2b2.crc.I2B2QueryResponse;
 import ch.epfl.lca1.medco.util.Logger;
 import ch.epfl.lca1.medco.util.MedCoUtil;
@@ -18,11 +18,9 @@ import edu.harvard.i2b2.crc.datavo.i2b2message.*;
 import ch.epfl.lca1.medco.util.exceptions.MedCoException;
 
 
-import ch.epfl.lca1.medco.MedCoQuery;
 import ch.epfl.lca1.medco.i2b2.crc.I2B2QueryRequest;
 import edu.harvard.i2b2.common.exception.I2B2Exception;
 
-import javax.xml.bind.JAXBElement;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 
@@ -38,8 +36,11 @@ public class MedCoQueryRequestDelegate extends RequestHandlerDelegate {
 	protected static edu.harvard.i2b2.crc.datavo.i2b2message.ObjectFactory i2b2OF =
 			new edu.harvard.i2b2.crc.datavo.i2b2message.ObjectFactory();
 
+    protected static MedCoUtil medCoUtil = MedCoUtil.getInstance();
 
-	// todo: hardcoded, should be taken from the PM
+
+
+    // todo: hardcoded, should be taken from the PM
 	public static final String clientPubKey = "eQviK90cvJ2lRx8ox6GgQKFmOtbgoG9RXa7UnmemtRA=";
 	public static final String clientSeckey = "iqLQz3zMlRjCyBrg4+303hsxL7F5vDtIaBxO0oc7gQA=";
 	/**
@@ -54,12 +55,15 @@ public class MedCoQueryRequestDelegate extends RequestHandlerDelegate {
 			
 			//I2B2Cell.authenticate(xx); // returns objects with infos about request
 
-			MedCoQuery medcoQuery = new MedCoQuery(request);
+            StandardQuery medcoQuery = new StandardQuery(request, medCoUtil.getUnlynxBinPath(), medCoUtil.getUnlynxGroupFilePath(),
+                    medCoUtil.getUnlynxDebugLevel(), medCoUtil.getUnlynxEntryPointIdx(), medCoUtil.getUnlynxProofsFlag(),
+                    medCoUtil.getI2b2Waittimems(), medCoUtil.getDataRepositoryCellUrl(), medCoUtil.getProjectManagementCellUrl(),
+                    null);
 			int resultMode = 0;
 			int timeoutSeconds = MedCoUtil.getInstance().getI2b2Waittimems();//todo: from configuration add entry specific to unlynx
 
 
-			I2B2QueryResponse queryAnswer = medcoQuery.executeQuery(resultMode, clientPubKey, timeoutSeconds);
+			I2B2QueryResponse queryAnswer = medcoQuery.executeQuery();
 
 			StringWriter strWriter = new StringWriter();
 			MedCoUtil.getMsgUtil().marshallerWithCDATA(i2b2OF.createResponse(queryAnswer), strWriter,

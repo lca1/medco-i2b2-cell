@@ -54,7 +54,7 @@ public class MedCoQueryClient {
 
 
         // initialize timers
-        Timers ts = new Timers();
+        ClientTimers ts = new ClientTimers();
 
         final Map<Integer, String> timesJsonOutput = new ConcurrentHashMap<>();
 
@@ -160,7 +160,7 @@ public class MedCoQueryClient {
     /**
      * store timers in an output file (to ease out simulations)
      */
-    private static void storeTimers(String filename, Timers ts){
+    private static void storeTimers(String filename, ClientTimers ts){
         try{
             PrintWriter writer = new PrintWriter(filename, "UTF-8");
             writer.println("QUERY: ");

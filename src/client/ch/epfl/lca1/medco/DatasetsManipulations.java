@@ -2,7 +2,6 @@ package ch.epfl.lca1.medco;
 
 import ch.epfl.lca1.medco.loader.EncryptedIdentifiersManager;
 import ch.epfl.lca1.medco.unlynx.UnlynxEncrypt;
-import ch.epfl.lca1.medco.util.StopWatch;
 import ch.epfl.lca1.medco.util.exceptions.UnlynxException;
 import com.opencsv.CSVReader;
 import com.opencsv.CSVWriter;
@@ -144,13 +143,13 @@ public class DatasetsManipulations {
         MedCoLoadingClient.loadSrv1Conf();
         UnlynxEncrypt encrypt = new UnlynxEncrypt();
 
-        StopWatch.overall.start();
+        //StopWatch.overall.start();
         for (int i = 0 ; i < 1000000 ; i++) {
             String hey = encrypt.encryptInt(i);
 
             if (i % 250000 == 0) {
-                long time = StopWatch.overall.getTotalTimeMillis();
-                System.out.println(time);
+                //long time = StopWatch.overall.getTotalTimeMillis();
+                //System.out.println(time);
             }
 
             if (i % 10000 == 0) {

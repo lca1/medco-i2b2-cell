@@ -44,7 +44,7 @@ public class MedCoDataLoader {
         // init connection to i2b2 cells
         auth = new UserAuthentication(domainId, projectId, username, false, 0, password);
         ontCell = new I2B2ONTCell(auth);
-        crcCell = new I2B2CRCCell(auth);
+        //crcCell = new I2B2CRCCell(auth);
         frCell = new I2B2FRCell(auth);
 
         medcoDao = new MedCoDatabase();

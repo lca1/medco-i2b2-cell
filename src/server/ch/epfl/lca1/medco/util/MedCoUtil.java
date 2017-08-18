@@ -56,6 +56,7 @@ try(FileInputStream fis = new FileInputStream(fileName)) {
  * required = true -> no default value
  * required = false -> default value provided (have default vals as constant)
  */
+//todo: split config / util, ocnfig used only at high level
 public class MedCoUtil {
 
     /**
