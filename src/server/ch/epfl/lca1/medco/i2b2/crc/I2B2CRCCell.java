@@ -1,8 +1,10 @@
 package ch.epfl.lca1.medco.i2b2.crc;
 
+import ch.epfl.lca1.medco.util.Constants;
 import edu.harvard.i2b2.crc.datavo.i2b2message.BodyType;
 import edu.harvard.i2b2.crc.datavo.i2b2message.ResponseMessageType;
 import edu.harvard.i2b2.crc.datavo.pdo.EidType;
+import edu.harvard.i2b2.crc.datavo.pdo.ParamType;
 import edu.harvard.i2b2.crc.datavo.pdo.PatientType;
 import edu.harvard.i2b2.crc.datavo.pdo.PidType;
 import edu.harvard.i2b2.crc.datavo.pdo.query.*;
@@ -32,11 +34,11 @@ public class I2B2CRCCell extends I2B2Cell {
     private static final String[] RESULT_OUTPUT_TYPES = {"PATIENTSET", "PATIENT_COUNT_XML"};//, "PATIENT_ENCOUNTER_SET", "PATIENT_COUNT_XML"};
 
 
-    public I2B2CRCCell(UserAuthentication auth) {
-        super(medCoUtil.getDataRepositoryCellUrl(), auth); // get url
+    public I2B2CRCCell(String crcCellUrl , UserAuthentication auth) {
+        super(crcCellUrl, auth); // get url
     }
 
-    public I2B2QueryResponse queryClearTerms(I2B2QueryRequest origRequest) throws I2B2Exception {
+    public I2B2QueryResponse queryRequest(I2B2QueryRequest origRequest) throws I2B2Exception {
 
         // make query request (from query definition) with a patient set result output
         origRequest.setOutputTypes(RESULT_OUTPUT_TYPES);
@@ -55,34 +57,48 @@ public class I2B2CRCCell extends I2B2Cell {
 
     /**
      * Given the original i2b2 query that has been stripped from the encrypted query terms, query the i2b2 crc for
-     * the corresponding patient set.
+     * the corresponding patient set, includes the enc dummies
      *
-     * @param origRequest
-     * @return
+     * @return list of ids + list of dummy flags
      * @throws I2B2Exception
      */
-    public List<String> queryForPatientSet(String patientSetId) throws I2B2Exception {
+    public Pair<List<String>, List<String>> queryForPatientSet(String patientSetId, boolean getDummyFlags) throws I2B2Exception {
 
 
         // make query to get the actual patient set with the id
         PatientListType pdoQueryPatientList = queryPdoOF.createPatientListType();
         pdoQueryPatientList.setPatientSetCollId(patientSetId);
         Pair<I2b2Status, PatientDataResponseType> patientSetResponse = pdoQueryFromInputList(null, null, pdoQueryPatientList,
-                null, false, true,false, true, false, false, false, false);
+                null, false, false,false, true, false, false, false, false);
 
         if (patientSetResponse.getValue0() != I2b2Status.DONE) {
             throw Logger.error(new I2B2Exception("Query for patient set id " + patientSetId + " to i2b2 CRC failed."));
         }
 
-        // extract the list of patient ids
-        List<String> patientSet = new ArrayList<>();
+        // extract the list of patient ids and enc dummy flags
+        List<String> patientIds = new ArrayList<>();
+        List<String> patientEncDummyFlags = new ArrayList<>();
         for (PatientType patientType : patientSetResponse.getValue1().getPatientData().getPatientSet().getPatient()) {
-            patientSet.add(patientType.getPatientId().getValue());
-            Logger.debug("Patient id extracted: " + patientSet.get(patientSet.size() - 1));
+            patientIds.add(patientType.getPatientId().getValue());
+            Logger.debug("Patient id extracted: " + patientIds.get(patientIds.size() - 1));
+
+            if (getDummyFlags) {
+                for (ParamType paramType : patientType.getParam()) {
+                    if (paramType.getColumn().trim().equals(Constants.PATIENT_DUMMY_FLAG_COL_NAME)) {
+                        patientEncDummyFlags.add(paramType.getValue());
+                        Logger.debug("Patient dummy flag extracted: " + patientEncDummyFlags.get(patientEncDummyFlags.size() - 1));
+                    }
+                }
+
+            }
         }
 
-        Logger.info("Query for patient set id " + patientSetId + " returning a patient of size " + patientSet.size());
-        return patientSet;
+        if (getDummyFlags && patientEncDummyFlags.size() != patientIds.size()) {
+            Logger.warn("Dummy flags requested but mismatch between nb patient ids (" + patientIds.size() + ") and nb dummy flags (" + patientEncDummyFlags.size() + ")");
+        }
+
+        Logger.info("Query for patient set id " + patientSetId + " returning a patient set of size " + patientIds.size());
+        return new Pair<>(patientIds, patientEncDummyFlags);
     }
 
     /**

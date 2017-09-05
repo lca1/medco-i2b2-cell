@@ -68,7 +68,7 @@ public class EncryptedIdsUnlynxTests {
                 "ATGGG".matches(EncryptedIdentifiersManager.ALLELES_REGEX)
         );
         Assert.assertTrue(
-                "".matches(EncryptedIdentifiersManager.ALLELES_REGEX)
+                "-".matches(EncryptedIdentifiersManager.ALLELES_REGEX)
         );
         Assert.assertTrue(
                 "GATGGG".matches(EncryptedIdentifiersManager.ALLELES_REGEX)

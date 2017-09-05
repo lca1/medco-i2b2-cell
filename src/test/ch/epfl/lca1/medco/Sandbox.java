@@ -1,6 +1,7 @@
 package ch.epfl.lca1.medco;
 
 import ch.epfl.lca1.medco.i2b2.MessagesUtil;
+import ch.epfl.lca1.medco.util.Constants;
 import ch.epfl.lca1.medco.util.XMLUtil;
 import edu.harvard.i2b2.common.util.jaxb.JAXBUtilException;
 import edu.harvard.i2b2.crc.datavo.i2b2message.BodyType;
@@ -11,6 +12,8 @@ import edu.harvard.i2b2.crc.datavo.setfinder.query.XmlValueType;
 import org.junit.Test;
 
 import javax.xml.bind.JAXBElement;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Created by misbach on 20.07.17.
@@ -57,5 +60,16 @@ public class Sandbox {
         String sub = unescaped.substring(unescaped.indexOf("<json_results>") + "<json_results>".length(),
                 unescaped.lastIndexOf("</json_results>"));
         System.out.println(sub);
+    }
+
+    @Test
+    public void testRegex() {
+        String okayValue = "\\\\CLINICAL_SENSITIVE\\medco\\encrypted\\C_ENC:HgtzHGZTHjkuj7778=\\";
+
+        Matcher medcoKeyMatcher = Constants.REGEX_QUERY_KEY_ENC.matcher(okayValue);
+        if (medcoKeyMatcher.matches()) {
+            System.out.println(medcoKeyMatcher.group(2));
+        }
+
     }
 }

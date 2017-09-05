@@ -1,18 +1,11 @@
 package ch.epfl.lca1.medco;
 
 import ch.epfl.lca1.medco.i2b2.crc.I2B2QueryRequest;
-import ch.epfl.lca1.medco.unlynx.UnlynxClient;
 import ch.epfl.lca1.medco.unlynx.UnlynxDecrypt;
-import ch.epfl.lca1.medco.unlynx.UnlynxQuery;
 import ch.epfl.lca1.medco.util.Logger;
-import ch.epfl.lca1.medco.util.MedCoUtil;
 import ch.epfl.lca1.medco.util.exceptions.MedCoException;
 import edu.harvard.i2b2.common.exception.I2B2Exception;
 import org.junit.Test;
-import org.postgresql.ds.PGSimpleDataSource;
-
-import java.util.ArrayList;
-import java.util.List;
 
 import static org.junit.Assert.assertTrue;
 
@@ -121,7 +114,7 @@ public class MedCoTests extends ConfiguredTests {
             "    </message_body>\n" +
             "</ns6:request>\n";
 
-
+/*
 	@Test
 	public void MedCoQueryTests() throws InterruptedException, I2B2Exception, MedCoException {
 
@@ -130,7 +123,7 @@ public class MedCoTests extends ConfiguredTests {
             try {
                 loadSrv1Conf();
                 I2B2QueryRequest i2b2Req = new I2B2QueryRequest(testQuery);
-                MedCoQuery medCoQuery = new MedCoQuery(i2b2Req);
+                MedCoQuery medCoQuery = new StandardQuery(i2b2Req);
                 String result1 = medCoQuery.executeQuery(0, clientPubKey, 180).getEncCountResult();
                 Logger.info(result1);
                 UnlynxDecrypt decrypt = new UnlynxDecrypt();
@@ -146,7 +139,7 @@ public class MedCoTests extends ConfiguredTests {
             try {
                 loadSrv3Conf();
                 I2B2QueryRequest i2b2Req = new I2B2QueryRequest(testQuery);
-                MedCoQuery medCoQuery = new MedCoQuery(i2b2Req);
+                MedCoQuery medCoQuery = new StandardQuery(i2b2Req);
                 String result1 = medCoQuery.executeQuery(0, clientPubKey, 180).getEncCountResult();
                 Logger.info(result1);
                 UnlynxDecrypt decrypt = new UnlynxDecrypt();
@@ -162,7 +155,7 @@ public class MedCoTests extends ConfiguredTests {
             try {
                 loadSrv5Conf();
                 I2B2QueryRequest i2b2Req = new I2B2QueryRequest(testQuery);
-                MedCoQuery medCoQuery = new MedCoQuery(i2b2Req);
+                MedCoQuery medCoQuery = new StandardQuery(i2b2Req);
                 String result1 = medCoQuery.executeQuery(0, clientPubKey, 180).getEncCountResult();
                 Logger.info(result1);
                 UnlynxDecrypt decrypt = new UnlynxDecrypt();
@@ -179,6 +172,6 @@ public class MedCoTests extends ConfiguredTests {
         query3Thread.join();
 
     }
-
+*/
 
 }
