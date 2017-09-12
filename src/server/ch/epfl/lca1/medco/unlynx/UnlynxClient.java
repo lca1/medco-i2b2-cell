@@ -165,7 +165,7 @@ public class UnlynxClient {
             }
 
             // extract tagged values
-            List encValuesXml = root.getChild("enc_values").getChildren("enc_value");
+            List encValuesXml = root.getChild("tagged_values").getChildren("tagged_value");
             List<String> encValues = new ArrayList<>(encValuesXml.size());
             for (Object anEncValuesXml : encValuesXml) {
                 encValues.add(((Element) anEncValuesXml).getValue());
