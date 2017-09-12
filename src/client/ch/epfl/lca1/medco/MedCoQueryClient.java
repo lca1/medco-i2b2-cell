@@ -3,12 +3,13 @@ package ch.epfl.lca1.medco;
 import ch.epfl.lca1.medco.axis2.MedCoQueryRequestDelegate;
 import ch.epfl.lca1.medco.i2b2.crc.I2B2QueryRequest;
 import ch.epfl.lca1.medco.i2b2.crc.I2B2QueryResponse;
-import ch.epfl.lca1.medco.i2b2.pm.UserAuthentication;
+import ch.epfl.lca1.medco.i2b2.pm.MedCoI2b2MessageHeader;
 import ch.epfl.lca1.medco.unlynx.UnlynxDecrypt;
 import ch.epfl.lca1.medco.util.MedCoUtil;
 import com.eclipsesource.json.Json;
 import com.eclipsesource.json.JsonObject;
 import org.apache.commons.cli.*;
+import org.apache.log4j.BasicConfigurator;
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 import org.javatuples.Triplet;
@@ -31,7 +32,8 @@ public class MedCoQueryClient {
     public static void main(String[] args) throws InterruptedException {
 
         // disable all logging (to control all output)
-        Logger.getRootLogger().setLevel(Level.INFO);
+        BasicConfigurator.configure();
+        Logger.getRootLogger().setLevel(Level.DEBUG);
 
         // get parameters from command-line and set the client configuration
         CommandLine cmd = parseCli(args);
@@ -62,7 +64,7 @@ public class MedCoQueryClient {
             final int repFinal = rep;
 
             // generate request
-            UserAuthentication auth = new UserAuthentication(domain, projectId, username, false, 0, password);
+            MedCoI2b2MessageHeader auth = new MedCoI2b2MessageHeader(domain, projectId, username, false, 0, password);
             List<List<String>> parsedQuery = parseQuery(Integer.parseInt(queryId));
             I2B2QueryRequest request = new I2B2QueryRequest(auth);
             request.setQueryDefinition(queryName, parsedQuery);
@@ -308,6 +310,15 @@ public class MedCoQueryClient {
 
     private static String getQueryUseCase(int nb) {
         switch (nb) {
+
+            case 100: // use-case medco-normal
+                return
+                        "\\\\CLINICAL_NON_SENSITIVE\\medco\\clinical\\nonsensitive\\GENDER\\Male\\ OR " +
+                        "\\\\CLINICAL_NON_SENSITIVE\\medco\\clinical\\nonsensitive\\GENDER\\Female\\" +
+                        " AND " +
+
+                        "\\\\SENSITIVE_TAGGED\\medco\\encrypted\\/98y5inj97O+26HXW8fJnbHDH0CCohmlCYNgMfgJ2mzufKVl8PBffruVGm1C05tqWxrXKPNF9AMghe8ELmNmzA==\\";
+
             case 1: // use-case 2 encrypted encrypted
                 return
                         // clear query terms to retrieve all dataset

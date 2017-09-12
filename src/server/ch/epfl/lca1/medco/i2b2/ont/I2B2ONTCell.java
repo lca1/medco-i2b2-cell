@@ -1,11 +1,11 @@
 package ch.epfl.lca1.medco.i2b2.ont;
 
+import ch.epfl.lca1.medco.i2b2.pm.MedCoI2b2MessageHeader;
 import edu.harvard.i2b2.crc.datavo.ontology.*;
 import edu.harvard.i2b2.crc.datavo.ontology.ConceptType;
 import ch.epfl.lca1.medco.i2b2.I2B2Cell;
 import ch.epfl.lca1.medco.i2b2.I2b2Status;
 import ch.epfl.lca1.medco.i2b2.MessagesUtil;
-import ch.epfl.lca1.medco.i2b2.pm.UserAuthentication;
 import ch.epfl.lca1.medco.util.Logger;
 import ch.epfl.lca1.medco.util.exceptions.ConceptNotFoundException;
 import ch.epfl.lca1.medco.util.exceptions.I2B2XMLException;
@@ -53,7 +53,7 @@ public class I2B2ONTCell extends I2B2Cell {
      */
     private Map<String, List<OntologyDataType>> conceptsListByTable;
 
-    public I2B2ONTCell(UserAuthentication auth) {
+    public I2B2ONTCell(MedCoI2b2MessageHeader auth) {
         super(medCoUtil.getOntologyCellUrl(), auth); // get url
 
         conceptsListByTable = new HashMap<>();//ontOF.createMetadataLoadType();

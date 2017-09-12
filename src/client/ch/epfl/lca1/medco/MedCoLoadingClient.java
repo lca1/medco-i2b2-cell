@@ -1,23 +1,15 @@
 package ch.epfl.lca1.medco;
 
-import ch.epfl.lca1.medco.axis2.MedCoQueryRequestDelegate;
 import ch.epfl.lca1.medco.dao.MedCoDatabase;
-import ch.epfl.lca1.medco.i2b2.crc.I2B2QueryRequest;
-import ch.epfl.lca1.medco.i2b2.crc.I2B2QueryResponse;
-import ch.epfl.lca1.medco.i2b2.pm.UserAuthentication;
 import ch.epfl.lca1.medco.loader.DataType;
-import ch.epfl.lca1.medco.unlynx.UnlynxDecrypt;
 import ch.epfl.lca1.medco.util.MedCoUtil;
 import ch.epfl.lca1.medco.util.exceptions.UnlynxException;
 import com.opencsv.CSVReader;
 import edu.harvard.i2b2.common.exception.I2B2Exception;
-import org.apache.commons.cli.*;
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
-import org.javatuples.Triplet;
 import org.postgresql.ds.PGSimpleDataSource;
 
-import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.*;

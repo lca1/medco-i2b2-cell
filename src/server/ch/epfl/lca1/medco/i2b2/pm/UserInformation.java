@@ -6,10 +6,10 @@ import edu.harvard.i2b2.crc.datavo.pm.RolesType;
 // todo: implement me
 public class UserInformation {
 
-    private UserAuthentication auth;
+    private MedCoI2b2MessageHeader auth;
 
 
-    public UserAuthentication getAuth() {
+    public MedCoI2b2MessageHeader getAuth() {
         return auth;
     }
 

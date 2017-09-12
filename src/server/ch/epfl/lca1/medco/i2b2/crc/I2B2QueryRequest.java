@@ -2,18 +2,15 @@ package ch.epfl.lca1.medco.i2b2.crc;
 
 import java.util.List;
 
-import ch.epfl.lca1.medco.i2b2.I2b2Status;
+import ch.epfl.lca1.medco.i2b2.pm.MedCoI2b2MessageHeader;
 import edu.harvard.i2b2.crc.datavo.i2b2message.*;
 import edu.harvard.i2b2.crc.datavo.setfinder.query.*;
 import ch.epfl.lca1.medco.i2b2.MessagesUtil;
-import ch.epfl.lca1.medco.i2b2.pm.UserAuthentication;
 import ch.epfl.lca1.medco.util.Logger;
 
 import ch.epfl.lca1.medco.util.MedCoUtil;
 import edu.harvard.i2b2.common.exception.I2B2Exception;
 import edu.harvard.i2b2.common.util.jaxb.JAXBUtilException;
-import edu.harvard.i2b2.crc.datavo.setfinder.query.ObjectFactory;
-import org.javatuples.Triplet;
 
 /**
  * Represents an I2B2 query request.
@@ -29,7 +26,7 @@ public class I2B2QueryRequest extends RequestMessageType {
 	private PsmQryHeaderType queryHeader;
 	private QueryDefinitionRequestType queryBody;
 
-	private UserAuthentication authentication;
+	private MedCoI2b2MessageHeader authentication;
 
 	private static final String I2B2_RESULT_OPTION_TYPE = "PATIENT_COUNT_XML";
 
@@ -55,7 +52,7 @@ public class I2B2QueryRequest extends RequestMessageType {
 		    // JAXB parsing
             RequestMessageType parsedRequest = msgUtil.parseI2b2Request(requestString);
 
-			authentication = new UserAuthentication(parsedRequest.getMessageHeader());
+			authentication = new MedCoI2b2MessageHeader(parsedRequest.getMessageHeader());
             setMessageHeader(authentication);
 
             setMessageBody(parsedRequest.getMessageBody());
@@ -77,7 +74,7 @@ public class I2B2QueryRequest extends RequestMessageType {
     /**
      * Used on client-side to create a request.
      */
-    public I2B2QueryRequest(UserAuthentication auth) {
+    public I2B2QueryRequest(MedCoI2b2MessageHeader auth) {
 
         // authentication
         authentication = auth;
@@ -179,7 +176,8 @@ public class I2B2QueryRequest extends RequestMessageType {
 	    return queryBody.getQueryDefinition().getQueryName();
     }
 
-    public UserAuthentication getUserAuthentication() {
+    @Override
+    public MedCoI2b2MessageHeader getMessageHeader() {
 	    return authentication;
     }
 }

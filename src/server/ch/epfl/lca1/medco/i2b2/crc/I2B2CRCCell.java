@@ -8,12 +8,9 @@ import edu.harvard.i2b2.crc.datavo.pdo.ParamType;
 import edu.harvard.i2b2.crc.datavo.pdo.PatientType;
 import edu.harvard.i2b2.crc.datavo.pdo.PidType;
 import edu.harvard.i2b2.crc.datavo.pdo.query.*;
-import edu.harvard.i2b2.crc.datavo.setfinder.query.MasterInstanceResultResponseType;
-import edu.harvard.i2b2.crc.datavo.setfinder.query.QueryResultInstanceType;
-import edu.harvard.i2b2.crc.datavo.setfinder.query.QueryStatusTypeType;
 import ch.epfl.lca1.medco.i2b2.I2B2Cell;
 import ch.epfl.lca1.medco.i2b2.I2b2Status;
-import ch.epfl.lca1.medco.i2b2.pm.UserAuthentication;
+import ch.epfl.lca1.medco.i2b2.pm.MedCoI2b2MessageHeader;
 import edu.harvard.i2b2.crc.loader.datavo.loader.query.*;
 import edu.harvard.i2b2.crc.loader.datavo.loader.query.InputOptionListType;
 import edu.harvard.i2b2.crc.loader.datavo.loader.query.OutputOptionListType;
@@ -34,7 +31,7 @@ public class I2B2CRCCell extends I2B2Cell {
     private static final String[] RESULT_OUTPUT_TYPES = {"PATIENTSET", "PATIENT_COUNT_XML"};//, "PATIENT_ENCOUNTER_SET", "PATIENT_COUNT_XML"};
 
 
-    public I2B2CRCCell(String crcCellUrl , UserAuthentication auth) {
+    public I2B2CRCCell(String crcCellUrl , MedCoI2b2MessageHeader auth) {
         super(crcCellUrl, auth); // get url
     }
 

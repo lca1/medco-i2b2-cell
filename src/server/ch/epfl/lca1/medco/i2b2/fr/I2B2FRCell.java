@@ -5,7 +5,7 @@ import edu.harvard.i2b2.crc.datavo.i2b2message.RequestMessageType;
 import edu.harvard.i2b2.crc.datavo.pdo.PatientDataType;
 import ch.epfl.lca1.medco.i2b2.I2B2Cell;
 import ch.epfl.lca1.medco.i2b2.I2b2Status;
-import ch.epfl.lca1.medco.i2b2.pm.UserAuthentication;
+import ch.epfl.lca1.medco.i2b2.pm.MedCoI2b2MessageHeader;
 import edu.harvard.i2b2.crc.loader.datavo.fr.File;
 import edu.harvard.i2b2.crc.loader.datavo.fr.SendfileRequestType;
 import ch.epfl.lca1.medco.util.Logger;
@@ -47,7 +47,7 @@ public class I2B2FRCell extends I2B2Cell {
                                 AXIS2_FILE_SIZE_THRESHOLD = "4000";
 
 
-    public I2B2FRCell(UserAuthentication auth) {
+    public I2B2FRCell(MedCoI2b2MessageHeader auth) {
         super(medCoUtil.getFileRepositoryCellUrl(), auth); // get url
     }
 

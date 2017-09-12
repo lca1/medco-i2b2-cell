@@ -6,7 +6,7 @@ import ch.epfl.lca1.medco.util.MedCoUtil;
 /**
  * Simple wrapper around the {@link MessageHeaderType} class that contains the I2B2 credentials.
  */
-public class UserAuthentication extends MessageHeaderType {
+public class MedCoI2b2MessageHeader extends MessageHeaderType {
 
     private static MedCoUtil util = MedCoUtil.getInstance();
 
@@ -15,8 +15,8 @@ public class UserAuthentication extends MessageHeaderType {
                                 RECEIVING_APPLICATION = "i2b2 cell",
                                 RECEIVING_APPLICATION_VERSION = "1.7";
 
-	public UserAuthentication(String domainId, String projectId, String username,
-							  boolean passwordIsToken, int tokenTimeoutMs, String passwordValue) {
+	public MedCoI2b2MessageHeader(String domainId, String projectId, String username,
+								  boolean passwordIsToken, int tokenTimeoutMs, String passwordValue) {
         // XXX message control id [messagenum + sessionid] not implemented
 
 		SecurityType security = new SecurityType();
@@ -51,7 +51,7 @@ public class UserAuthentication extends MessageHeaderType {
 		setProjectId(projectId);
 	}
 
-	public UserAuthentication(MessageHeaderType messageHeader) {
+	public MedCoI2b2MessageHeader(MessageHeaderType messageHeader) {
 		this(messageHeader.getSecurity().getDomain(),
                 messageHeader.getProjectId(),
                 messageHeader.getSecurity().getUsername(),

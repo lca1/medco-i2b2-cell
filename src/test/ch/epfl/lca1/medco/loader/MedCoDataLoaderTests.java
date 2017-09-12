@@ -3,7 +3,7 @@ package ch.epfl.lca1.medco.loader;
 import ch.epfl.lca1.medco.ConfiguredTests;
 import ch.epfl.lca1.medco.MedCoDataLoader;
 import ch.epfl.lca1.medco.i2b2.ont.I2B2ONTCell;
-import ch.epfl.lca1.medco.i2b2.pm.UserAuthentication;
+import ch.epfl.lca1.medco.i2b2.pm.MedCoI2b2MessageHeader;
 import ch.epfl.lca1.medco.loader.clinical.OntologyLoader;
 import ch.epfl.lca1.medco.util.exceptions.UnlynxException;
 import edu.harvard.i2b2.common.exception.I2B2Exception;
@@ -30,7 +30,7 @@ public class MedCoDataLoaderTests extends ConfiguredTests {
                 DataType.CLEAR,
                 DataType.ENC
         };
-        UserAuthentication auth = new UserAuthentication("i2b2demotest", "Demo", "demo", false, 0, "demouser");
+        MedCoI2b2MessageHeader auth = new MedCoI2b2MessageHeader("i2b2demotest", "Demo", "demo", false, 0, "demouser");
 
         OntologyLoader loader = new OntologyLoader(headers, types, "chuv");
         loader.parseEntry(new String[]{"22", "333F",      "A", "B", "A", "33", "5630"});

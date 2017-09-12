@@ -2,11 +2,11 @@ package ch.epfl.lca1.medco.i2b2;
 
 import javax.xml.bind.JAXBElement;
 
+import ch.epfl.lca1.medco.i2b2.pm.MedCoI2b2MessageHeader;
 import edu.harvard.i2b2.crc.datavo.i2b2message.BodyType;
 import edu.harvard.i2b2.crc.datavo.i2b2message.RequestHeaderType;
 import edu.harvard.i2b2.crc.datavo.i2b2message.RequestMessageType;
 import edu.harvard.i2b2.crc.datavo.i2b2message.ResponseMessageType;
-import ch.epfl.lca1.medco.i2b2.pm.UserAuthentication;
 import org.apache.axiom.om.OMElement;
 import ch.epfl.lca1.medco.util.Logger;
 import ch.epfl.lca1.medco.util.MedCoUtil;
@@ -38,7 +38,7 @@ public abstract class I2B2Cell {
 	 */
 	protected static MedCoUtil medCoUtil = MedCoUtil.getInstance();
 
-	protected UserAuthentication auth;
+	protected MedCoI2b2MessageHeader auth;
 
 	// todo: centralize object factories in 1 point (msgutil)
 	// JAXB object factories
@@ -57,7 +57,7 @@ public abstract class I2B2Cell {
     protected static edu.harvard.i2b2.crc.datavo.setfinder.query.ObjectFactory querySetFinderOF =
             new edu.harvard.i2b2.crc.datavo.setfinder.query.ObjectFactory();
 
-	protected I2B2Cell(String cellURL, UserAuthentication auth) {
+	protected I2B2Cell(String cellURL, MedCoI2b2MessageHeader auth) {
 		this.cellURL = cellURL;
 		this.auth = auth;
 	}

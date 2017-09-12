@@ -2,7 +2,7 @@ package ch.epfl.lca1.medco.i2b2;
 
 import ch.epfl.lca1.medco.i2b2.fr.I2B2FRCell;
 import ch.epfl.lca1.medco.i2b2.ont.I2B2ONTCell;
-import ch.epfl.lca1.medco.i2b2.pm.UserAuthentication;
+import ch.epfl.lca1.medco.i2b2.pm.MedCoI2b2MessageHeader;
 import ch.epfl.lca1.medco.util.MedCoUtil;
 import ch.epfl.lca1.medco.util.exceptions.UnlynxException;
 import edu.harvard.i2b2.common.exception.I2B2Exception;
@@ -25,7 +25,7 @@ public class I2b2CellsTests {
                 "http://localhost:8080/i2b2/services/FRService");
     }
 
-    private UserAuthentication auth = new UserAuthentication("i2b2demotest", "Demo",
+    private MedCoI2b2MessageHeader auth = new MedCoI2b2MessageHeader("i2b2demotest", "Demo",
             "demo", false, 0, "demouser");
 
     private I2B2ONTCell ontCell = new I2B2ONTCell(auth);

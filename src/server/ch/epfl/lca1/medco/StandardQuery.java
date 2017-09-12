@@ -13,7 +13,6 @@ import ch.epfl.lca1.medco.i2b2.crc.I2B2CRCCell;
 import ch.epfl.lca1.medco.i2b2.crc.I2B2QueryRequest;
 import ch.epfl.lca1.medco.i2b2.crc.I2B2QueryResponse;
 import ch.epfl.lca1.medco.i2b2.pm.I2B2PMCell;
-import ch.epfl.lca1.medco.i2b2.pm.UserAuthentication;
 import ch.epfl.lca1.medco.i2b2.pm.UserInformation;
 import ch.epfl.lca1.medco.unlynx.UnlynxClient;
 import ch.epfl.lca1.medco.util.Constants;
@@ -58,11 +57,11 @@ public class StandardQuery {
 	public StandardQuery(I2B2QueryRequest request,
                          String unlynxBinPath, String unlynxGroupFilePath, int unlynxDebugLevel, int unlynxEntryPointIdx,
                          int unlynxProofsFlag, long unlynxTimeoutSeconds,
-                         String crcCellUrl, String pmCellUrl, UserAuthentication medcoI2b2Auth) throws I2B2Exception {
+                         String crcCellUrl, String pmCellUrl) throws I2B2Exception {
 		this.queryRequest = request;
 		unlynxClient = new UnlynxClient(unlynxBinPath, unlynxGroupFilePath, unlynxDebugLevel, unlynxEntryPointIdx, unlynxProofsFlag, unlynxTimeoutSeconds);
-		crcCell = new I2B2CRCCell(crcCellUrl, medcoI2b2Auth);
-		pmCell = new I2B2PMCell(pmCellUrl, medcoI2b2Auth);
+		crcCell = new I2B2CRCCell(crcCellUrl, queryRequest.getMessageHeader());
+		pmCell = new I2B2PMCell(pmCellUrl, queryRequest.getMessageHeader());
 	}
 	
 	/**

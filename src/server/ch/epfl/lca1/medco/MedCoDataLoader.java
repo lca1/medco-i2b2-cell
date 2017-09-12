@@ -4,7 +4,7 @@ import ch.epfl.lca1.medco.dao.MedCoDatabase;
 import ch.epfl.lca1.medco.i2b2.crc.I2B2CRCCell;
 import ch.epfl.lca1.medco.i2b2.fr.I2B2FRCell;
 import ch.epfl.lca1.medco.i2b2.ont.I2B2ONTCell;
-import ch.epfl.lca1.medco.i2b2.pm.UserAuthentication;
+import ch.epfl.lca1.medco.i2b2.pm.MedCoI2b2MessageHeader;
 import ch.epfl.lca1.medco.loader.clinical.DataLoader;
 import ch.epfl.lca1.medco.loader.clinical.OntologyLoader;
 import ch.epfl.lca1.medco.loader.DataType;
@@ -30,7 +30,7 @@ public class MedCoDataLoader {
     private MedCoDatabase medcoDao;
 
 
-    private UserAuthentication auth;
+    private MedCoI2b2MessageHeader auth;
     private I2B2ONTCell ontCell;
     private I2B2CRCCell crcCell;
     private I2B2FRCell frCell;
@@ -42,7 +42,7 @@ public class MedCoDataLoader {
         this.datasetId = datasetId;
 
         // init connection to i2b2 cells
-        auth = new UserAuthentication(domainId, projectId, username, false, 0, password);
+        auth = new MedCoI2b2MessageHeader(domainId, projectId, username, false, 0, password);
         ontCell = new I2B2ONTCell(auth);
         //crcCell = new I2B2CRCCell(auth);
         frCell = new I2B2FRCell(auth);

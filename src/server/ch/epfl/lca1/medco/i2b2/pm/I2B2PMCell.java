@@ -56,7 +56,7 @@ public class I2B2PMCell extends I2B2Cell {
 //		return response;
 //	}
 
-	public I2B2PMCell(String pmCellUrl, UserAuthentication medcoI2b2Auth) {
+	public I2B2PMCell(String pmCellUrl, MedCoI2b2MessageHeader medcoI2b2Auth) {
 		super(medCoUtil.getProjectManagementCellUrl(), null); // get url
 	}
 
@@ -68,13 +68,13 @@ public class I2B2PMCell extends I2B2Cell {
  	 * 
  	 * @throws I2B2Exception if the original request message is missing required parts
 	 */
-	public UserAuthentication doAuthentication(RequestMessageType origReqMessage) {
+	public MedCoI2b2MessageHeader doAuthentication(RequestMessageType origReqMessage) {
 		
 		if (origReqMessage == null || origReqMessage.getMessageHeader() == null || 
 				origReqMessage.getMessageHeader().getSecurity() == null) {
 			
 			Logger.warn("Authentication failed because some parts of the original request message is missing.");
-			return null;// new UserAuthentication(origReqMessage, false);
+			return null;// new MedCoI2b2MessageHeader(origReqMessage, false);
 		}
 		
 		// construct authentication request

@@ -57,8 +57,7 @@ public class MedCoQueryRequestDelegate extends RequestHandlerDelegate {
 
             StandardQuery medcoQuery = new StandardQuery(request, medCoUtil.getUnlynxBinPath(), medCoUtil.getUnlynxGroupFilePath(),
                     medCoUtil.getUnlynxDebugLevel(), medCoUtil.getUnlynxEntryPointIdx(), medCoUtil.getUnlynxProofsFlag(),
-                    medCoUtil.getI2b2Waittimems(), medCoUtil.getDataRepositoryCellUrl(), medCoUtil.getProjectManagementCellUrl(),
-                    null);
+                    medCoUtil.getI2b2Waittimems(), medCoUtil.getDataRepositoryCellUrl(), medCoUtil.getProjectManagementCellUrl());
 			int resultMode = 0;
 			int timeoutSeconds = MedCoUtil.getInstance().getI2b2Waittimems();//todo: from configuration add entry specific to unlynx
 
