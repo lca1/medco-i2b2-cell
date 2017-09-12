@@ -12,6 +12,8 @@ import org.apache.log4j.PatternLayout;
  * fatal, error, warn, info, debug, trace
  * 
  * Use a {@link SecurityManager} to automatically get the caller class.
+ *
+ * Should be configured via a side channel (e.g. log4j.properties file server-side, or programmatically client-side)
  * 
  * @author Mickael Misbach
  */
@@ -47,10 +49,6 @@ public class Logger {
 	 * Instance of the log factory used to generate the {@link Log} instances.
 	 */
 	private static LogFactory logFactory = LogFactory.getFactory();
-
-	static { // todo:
-        BasicConfigurator.configure();
-	}
 
 	/**
 	 * Instance of the caller provider class.
