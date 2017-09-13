@@ -63,8 +63,7 @@ public class MedCoUtil {
      * Names of general MedCo properties.
      */
     public static final String MEDCO_APP_NAME_PROPERTIES = "medco.app.name",
-                                MEDCO_APP_VERSION_PROPERTIES = "medco.app.version",
-								LOG_LEVEL_PROPERTIES = "medco.log.level";
+                                MEDCO_APP_VERSION_PROPERTIES = "medco.app.version";
 
 	/**
      * Names of properties related to the I2B2 communications.
@@ -105,14 +104,6 @@ public class MedCoUtil {
     /** field to store application properties **/
     private static Properties appProperties = null;
 
-    /* --- performance evaluation settings --
-    * todo: disable all logging
-    * todo: output of times
-    *
-    * */
-    public static final String PERF_EVAL_MODE_PROPERTIES = "medco.perfevalmode.enable";
-
-
     /** field to store app datasource**/
     private DataSource dataSource = null;
 
@@ -149,55 +140,6 @@ public class MedCoUtil {
 		return jaxbUtil;
 	}
 
-    /**
-     * default: false
-     * @return
-     */
-	public boolean getPerfEvalMode() {
-        String perf = getPropertyValue(PERF_EVAL_MODE_PROPERTIES, false);
-
-        // if null or invalid -> false
-        return Boolean.parseBoolean(perf);
-    }
-	
-	/*
-	protected ModifierType getModifierMetadataFromOntology(ItemType item, SecurityType securityType, String projectId) 
-			throws ConceptNotFoundException, OntologyException {
-		
-		// extract ontology query info from the modifier constraint
-		ItemType.ConstrainByModifier modifierConstrain = item.getConstrainByModifier();
-		String modifierKey = modifierConstrain.getModifierKey();
-		String modifierAppliedPath = modifierConstrain.getAppliedPath();
-		
-		// query the ontology to get the metadata
-		ModifierType modifierType = null;
-		try {
-			// get ontology cell query URL
-			QueryProcessorUtil qpUtil = QueryProcessorUtil.getInstance();
-			String ontologyUrl = qpUtil.getCRCPropertyValue(QueryProcessorUtil.ONTOLOGYCELL_ROOT_WS_URL_PROPERTIES);
-			String getModifierOperationName = qpUtil.getCRCPropertyValue(QueryProcessorUtil.ONTOLOGYCELL_GETMODIFIERINFO_URL_PROPERTIES);
-			String ontologyGetModifierInfoUrl = ontologyUrl	+ getModifierOperationName;
-			log.debug("Ontology getModifierinfo url from property file [" + ontologyGetModifierInfoUrl + "]");
-			
-			// query ontology cell
-			modifierType = CallOntologyUtil.callGetModifierInfo(modifierKey,
-					modifierAppliedPath, securityType,
-					projectId, ontologyGetModifierInfoUrl);
-
-		} catch (JAXBUtilException | I2B2Exception | AxisFault | XMLStreamException e) {
-			log.error("Error while fetching metadata [" + modifierKey + "] from ontology ", e);
-			throw new OntologyException(
-				"Error while fetching metadata ["+ modifierKey + "] from ontology " + StackTraceUtil.getStackTrace(e));
-		}
-		
-		// return value null means was not found
-		if (modifierType == null) {
-			throw new ConceptNotFoundException("Error getting modifierinfo for modifier key [" + modifierKey +
-					"] and appliedPath [" + modifierAppliedPath + "]");
-		}
-
-		return modifierType;
-	}*/
 	
     /**
      * Return this class instance
@@ -261,11 +203,6 @@ public class MedCoUtil {
 			Logger.warn("Cannot parse int", e);
 			return 180000;
 		}
-	}
-
-	public String getLogLevel() {
-		String fromPropFile = getPropertyValue(LOG_LEVEL_PROPERTIES, false);
-		return fromPropFile == null ? "INFO" : fromPropFile;
 	}
 
 	public String getOntologyCellUrl() {
@@ -385,60 +322,6 @@ public class MedCoUtil {
     public void setDataSource(DataSource ds) {
         dataSource = ds;
     }
-    
-
-	public void convertToUppercaseStrings( List< String > list )
-	{
-		ListIterator< String > iterator = list.listIterator();
-
-		while ( iterator.hasNext() ) 
-		{
-			String color = iterator.next();  // get item                 
-			iterator.set( color.toUpperCase() ); // convert to upper case
-		} // end while
-	}
-	public  String toHex(byte[] digest) {
-		StringBuffer buf = new StringBuffer();
-		for (int i = 0; i < digest.length; i++) {
-			buf.append(Integer.toHexString((int) digest[i] & 0x00FF));
-		}
-		return buf.toString();
-	}
-
-	public String generateMessageId() {
-		StringWriter strWriter = new StringWriter();
-		for(int i=0; i<20; i++) {
-			int num = getValidAcsiiValue();
-			//System.out.println("Generated number: " + num + " char: "+(char)num);
-			strWriter.append((char)num);
-		}
-		return strWriter.toString();
-	}
-	
-	private int getValidAcsiiValue() {
-		int number = 48;
-		while(true) {
-			number = 48+(int) Math.round(Math.random() * 74);
-			if((number > 47 && number < 58) || (number > 64 && number < 91) 
-				|| (number > 96 && number < 123)) {
-					break;
-				}
-		}
-		return number;
-		
-	}
-
-	
-	public String getHashedPassword(String pass) {
-		try {
-			MessageDigest md5 = MessageDigest.getInstance("MD5");
-			md5.update(pass.getBytes());
-			return toHex(md5.digest());
-		} catch (NoSuchAlgorithmException e) {
-			Logger.error(e);
-		}
-		return null;
-	}
     
     //---------------------
     // private methods here
