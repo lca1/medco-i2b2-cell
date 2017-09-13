@@ -175,4 +175,31 @@ public class EncryptedIdsUnlynxTests {
             Assert.assertTrue(true);
         }
     }
+
+    @Test
+    public void GetSpecificID() {
+
+        try {
+            long id = EncryptedIdentifiersManager.getVariantId(
+                    "11",
+                    74985268L,
+                    "G",
+                    "A");
+
+            long check = new BigInteger(
+                    "1" +
+                            "00011" +
+                            "0000000000001000001001010110" +
+                            "100" +
+                            "000111110000" +
+                            "000" +
+                            "000000000000", 2).longValue();
+            System.out.println(id);
+            Assert.assertEquals(id, check);
+        } catch (UnlynxException e) {
+            e.printStackTrace();
+            Assert.assertTrue(true);
+        }
+
+    }
 }
