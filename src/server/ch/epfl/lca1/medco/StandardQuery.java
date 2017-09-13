@@ -125,10 +125,10 @@ public class StandardQuery {
         }
 
         i2b2Response.resetResultInstanceListToEncryptedCountOnly();
+        Timers.get("overall").stop();
         i2b2Response.setQueryResults(user.getUserPublicKey(), aggResult, Timers.generateFullReport());
 
         Logger.info("MedCo query successful (" + queryRequest.getQueryName() + ").");
-        Timers.get("overall").stop();
         return i2b2Response;
 		
 	}
