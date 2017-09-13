@@ -1,15 +1,13 @@
 package ch.epfl.lca1.medco;
 
-import ch.epfl.lca1.medco.loader.EncryptedIdentifiersManager;
 import ch.epfl.lca1.medco.unlynx.UnlynxEncrypt;
-import ch.epfl.lca1.medco.util.exceptions.UnlynxException;
+import ch.epfl.lca1.medco.util.MedCoUtil;
 import com.opencsv.CSVReader;
 import com.opencsv.CSVWriter;
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
-import org.apache.xpath.operations.Number;
+import org.postgresql.ds.PGSimpleDataSource;
 
-import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -35,7 +33,7 @@ public class DatasetsManipulations {
     public static void generateHistogramsForLeakage() throws IOException {
         // generate histograms
 
-        MedCoLoadingClient.loadSrv1Conf();
+        //todo: MedCoLoadingClient.loadSrv1Conf();
         String genomicFilePath = "/home/misbach/repositories/i2b2-core-server-medco/ch.epfl.lca1.medco/testfiles/datasets/full/skcm_broad/data_mutations_extended_skcm_broad.txt",
                 clinicalFilePath = "/home/misbach/repositories/i2b2-core-server-medco/ch.epfl.lca1.medco/testfiles/datasets/full/skcm_broad/data_clinical_skcm_broad.txt",
                 clearGenomicOutputPath1 = "/home/misbach/repositories/i2b2-core-server-medco/ch.epfl.lca1.medco/testfiles/datasets/full/skcm_broad/histogram_nb_patients.txt",
@@ -140,7 +138,7 @@ public class DatasetsManipulations {
 
     public static void timeEncrypt() throws IOException {
         Logger.getRootLogger().setLevel(Level.OFF);
-        MedCoLoadingClient.loadSrv1Conf();
+        loadSrv1Conf();
         UnlynxEncrypt encrypt = new UnlynxEncrypt();
 
         //StopWatch.overall.start();
@@ -161,7 +159,7 @@ public class DatasetsManipulations {
     public static void generateClearGenomicDataset() throws IOException {
         // generate full dataset for clear i2b2 loading, then split using the existing things
 
-        MedCoLoadingClient.loadSrv1Conf();
+        loadSrv1Conf();
         String genomicFilePath = "/home/misbach/repositories/i2b2-core-server-medco/ch.epfl.lca1.medco/testfiles/datasets/full/skcm_broad/data_mutations_extended_skcm_broad.txt",
                 clinicalFilePath = "/home/misbach/repositories/i2b2-core-server-medco/ch.epfl.lca1.medco/testfiles/datasets/full/skcm_broad/data_clinical_skcm_broad.txt",
                 clearGenomicOutputPath = "/home/misbach/repositories/i2b2-core-server-medco/ch.epfl.lca1.medco/testfiles/datasets/full/skcm_broad/data_mutations_extended_skcm_broad_clear_i2b2.txt";
@@ -244,7 +242,7 @@ public class DatasetsManipulations {
         // annotation protein position = 600/766
         // hugo symbol = braf
 
-        MedCoLoadingClient.loadSrv1Conf();
+        loadSrv1Conf();
         Logger.getRootLogger().setLevel(Level.OFF);
 
         String genomicFilePath = "/home/misbach/repositories/i2b2-core-server-medco/ch.epfl.lca1.medco/testfiles/datasets/full/skcm_broad/data_mutations_extended_skcm_broad.txt";
@@ -539,4 +537,49 @@ public class DatasetsManipulations {
         genomicWriters[2].close();
 
     }
+
+    protected static void loadMedCoConf(String hostname, int i2b2Port, int psqlPort, String unlynxEntryPoint) {
+        MedCoUtil.getTestInstance().setProperty(MedCoUtil.ONTCELL_WS_URL_PROPERTIES,
+                "http://" + hostname + ":" + i2b2Port + "/i2b2/services/OntologyService");
+        MedCoUtil.getTestInstance().setProperty(MedCoUtil.FRCELL_WS_URL_PROPERTIES,
+                "http://" + hostname + ":" + i2b2Port + "/i2b2/services/FRService");
+        MedCoUtil.getTestInstance().setProperty(MedCoUtil.CRCCELL_WS_URL_PROPERTIES,
+                "http://" + hostname + ":" + i2b2Port + "/i2b2/services/QueryToolService");
+        MedCoUtil.getTestInstance().setProperty(MedCoUtil.I2B2CELLS_WS_WAITTIME_PROPERTIES,
+                "180000");
+
+        MedCoUtil.getTestInstance().setProperty(MedCoUtil.UNLYNX_BINARY_PATH_PROPERTIES, "unlynxI2b2"); // assumed in bin path
+        MedCoUtil.getTestInstance().setProperty(MedCoUtil.UNLYNX_GROUP_FILE_PATH_PROPERTIES,
+                "/home/misbach/repositories/medco-deployment/configuration/keys/dev-3nodes-samehost/group.toml");
+
+        MedCoUtil.getTestInstance().setProperty(MedCoUtil.UNLYNX_DEBUG_LEVEL_PROPERTIES, "5");
+        MedCoUtil.getTestInstance().setProperty(MedCoUtil.UNLYNX_PROOFS_PROPERTIES, "0");
+        MedCoUtil.getTestInstance().setProperty(MedCoUtil.UNLYNX_ENTRY_POINT_IDX_PROPERTIES, unlynxEntryPoint);
+
+        PGSimpleDataSource ds = new PGSimpleDataSource();
+        ds.setServerName(hostname);
+        ds.setDatabaseName("medcodeployment");
+        ds.setPortNumber(psqlPort);
+        ds.setUser("postgres");
+        ds.setPassword("prigen2017");
+        //ds.setCurrentSchema("medco_data");
+
+        MedCoUtil.getTestInstance().setDataSource(ds);
+    }
+
+    protected static void loadSrv1Conf() {
+        loadMedCoConf("localhost", 8082,
+                5434, "0");
+    }
+
+    protected static void loadSrv3Conf() {
+        loadMedCoConf("iccluster062.iccluster.epfl.ch", 8080,
+                5432, "1");
+    }
+
+    protected static void loadSrv5Conf() {
+        loadMedCoConf("iccluster063.iccluster.epfl.ch", 8080,
+                5432, "2");
+    }
+
 }
