@@ -38,15 +38,15 @@ public class Constants {
 
 
     public static String
-            CONCEPT_PATH_NODE_ENC = "encrypted",
-            CONCEPT_PATH_NODE_TAGGED = "tagged";
+            CONCEPT_KEY_ENCRYPTED_FLAG = "ENCRYPTED_KEY",
+            CONCEPT_PATH_TAGGED_PREFIX = "\\\\SENSITIVE_TAGGED\\medco\\tagged\\"; // todo: should be configurable
 
     /**
      * Regex patterns that matches query keys with encrypted term
      * todo: replace path encrypted / tagged
      */
     public static final Pattern REGEX_QUERY_KEY_ENC =
-            Pattern.compile("(.*\\\\)(" + CONCEPT_PATH_NODE_ENC + ")(\\\\)([a-zA-Z0-9+/=]+)(\\\\)$");
+            Pattern.compile("^\\s*\\\\\\\\" + CONCEPT_KEY_ENCRYPTED_FLAG + "\\\\([a-zA-Z0-9+/=]+)\\\\\\s*$");
 
 
     /**

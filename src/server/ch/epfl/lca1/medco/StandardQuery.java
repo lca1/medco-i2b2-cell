@@ -153,11 +153,10 @@ public class StandardQuery {
             int nbItems = panel.getItem().size();
             for (int i = 0; i < nbItems; i++) {
 
-                // replace encryptem item with its tagged version
+                // replace encrypted item with its tagged version
                 Matcher medcoKeyMatcher = Constants.REGEX_QUERY_KEY_ENC.matcher(panel.getItem().get(i).getItemKey());
                 if (medcoKeyMatcher.matches()) {
-                    panel.getItem().get(i).setItemKey(medcoKeyMatcher.replaceFirst(
-                            "$1" + Constants.CONCEPT_PATH_NODE_TAGGED + "$3" + taggedItems.get(encTermCount++) + "$5"));
+                    panel.getItem().get(i).setItemKey(Constants.CONCEPT_PATH_TAGGED_PREFIX + taggedItems.get(encTermCount++) + "\\");
                 }
 
             }
@@ -207,7 +206,7 @@ public class StandardQuery {
                         predicateSw.append("(");
                     }
 
-                    extractedItems.add(medcoKeyMatcher.group(4));
+                    extractedItems.add(medcoKeyMatcher.group(1));
                     predicateSw.append("exists(v" + encTermCount++ + ", r)");
 
                     if (i < nbItems - 1) {
