@@ -40,7 +40,7 @@ public class I2B2QueryRequest extends RequestMessageType {
     /**
 	 * Used on server-side to parse an incoming request.
      * Unmashall the query from string.
-	 * Checks type is with query definition. (both in header annnnnnnd for the type of xml for qrequestbody)
+	 * Checks type is with query definition. (both in header and for the type of xml for qrequestbody)
 	 * 
 	 * @param requestString
 	 * @throws JAXBUtilException if the string could not be parsed / unmashalled
@@ -62,14 +62,15 @@ public class I2B2QueryRequest extends RequestMessageType {
 			queryBody = (QueryDefinitionRequestType) msgUtil.getUnwrapHelper().getObjectByClass(
                     getMessageBody().getAny(), QueryDefinitionRequestType.class);
 
-			// check type is query request with query definition
-			if (!queryHeader.getRequestType().equals(PsmRequestTypeType.CRC_QRY_RUN_QUERY_INSTANCE_FROM_QUERY_DEFINITION)) {
-				throw new I2B2Exception("Only query from query definition supported, got:" + queryHeader.getRequestType());
-			}
 		} catch (ClassCastException | JAXBUtilException e) {
 			throw Logger.error(new I2B2Exception("JAXB unwrap failed.", e));
 		}
 	}
+
+    public boolean shouldForwardToI2b2Crc() {
+        // check type is query request with query definition
+        return (!queryHeader.getRequestType().equals(PsmRequestTypeType.CRC_QRY_RUN_QUERY_INSTANCE_FROM_QUERY_DEFINITION));
+    }
 
     /**
      * Used on client-side to create a request.

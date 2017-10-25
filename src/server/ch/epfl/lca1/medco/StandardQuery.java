@@ -100,6 +100,7 @@ public class StandardQuery {
         // replace the query terms, query i2b2 with the original clear query terms + the tagged ones
         Timers.get("steps").start("i2b2 query");
         replaceEncryptedQueryTerms(taggedItems);
+        overrideResultOutputTypes(new String[]{"PATIENTSET", "PATIENT_COUNT_XML"});
         I2B2QueryResponse i2b2Response = crcCell.queryRequest(queryRequest);
         Timers.get("steps").stop();
 
@@ -166,6 +167,10 @@ public class StandardQuery {
         if (encTermCount != taggedItems.size()) {
             Logger.warn("Mismatch in provided number of tagged items (" + taggedItems.size() + ") and number of encrypted items in query (" + encTermCount + ")");
         }
+    }
+
+    private void overrideResultOutputTypes(String[] outputTypes) throws MedCoException {
+        queryRequest.setOutputTypes(outputTypes);
     }
 
     /**

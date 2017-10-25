@@ -28,9 +28,6 @@ public class I2B2CRCCell extends I2B2Cell {
                                 URL_PATH_I2B2_PDOREQ = "/pdorequest",
                                 URL_PATH_I2B2_REQ = "/request";
 
-    private static final String[] RESULT_OUTPUT_TYPES = {"PATIENTSET", "PATIENT_COUNT_XML"};//, "PATIENT_ENCOUNTER_SET", "PATIENT_COUNT_XML"};
-
-
     public I2B2CRCCell(String crcCellUrl , MedCoI2b2MessageHeader auth) {
         super(crcCellUrl, auth); // get url
     }
@@ -38,7 +35,6 @@ public class I2B2CRCCell extends I2B2Cell {
     public I2B2QueryResponse queryRequest(I2B2QueryRequest origRequest) throws I2B2Exception {
 
         // make query request (from query definition) with a patient set result output
-        origRequest.setOutputTypes(RESULT_OUTPUT_TYPES);
         I2B2QueryResponse parsedResp;
         try {
             ResponseMessageType resp = requestToCell(URL_PATH_I2B2_REQ, origRequest);

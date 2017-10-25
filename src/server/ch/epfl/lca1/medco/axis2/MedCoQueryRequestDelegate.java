@@ -10,6 +10,7 @@
 package ch.epfl.lca1.medco.axis2;
 
 import ch.epfl.lca1.medco.StandardQuery;
+import ch.epfl.lca1.medco.i2b2.crc.I2B2CRCCell;
 import ch.epfl.lca1.medco.i2b2.crc.I2B2QueryResponse;
 import ch.epfl.lca1.medco.util.Logger;
 import ch.epfl.lca1.medco.util.MedCoUtil;
@@ -52,18 +53,26 @@ public class MedCoQueryRequestDelegate extends RequestHandlerDelegate {
 
         try {
 			I2B2QueryRequest request = new I2B2QueryRequest(requestString);
+            I2B2QueryResponse queryAnswer;
+
+            // get a query response
+			if (request.shouldForwardToI2b2Crc()) {
+                I2B2CRCCell crcCell = new I2B2CRCCell(medCoUtil.getDataRepositoryCellUrl(), request.getMessageHeader());
+                queryAnswer = crcCell.queryRequest(request);
+
+            } else {
+                //I2B2Cell.authenticate(xx); // returns objects with infos about request
+
+                StandardQuery medcoQuery = new StandardQuery(request, medCoUtil.getUnlynxBinPath(), medCoUtil.getUnlynxGroupFilePath(),
+                        medCoUtil.getUnlynxDebugLevel(), medCoUtil.getUnlynxEntryPointIdx(), medCoUtil.getUnlynxProofsFlag(),
+                        medCoUtil.getI2b2Waittimems(), medCoUtil.getDataRepositoryCellUrl(), medCoUtil.getProjectManagementCellUrl());
+                int resultMode = 0;
+                int timeoutSeconds = MedCoUtil.getInstance().getI2b2Waittimems();//todo: from configuration add entry specific to unlynx
+
+                queryAnswer = medcoQuery.executeQuery();
+            }
 			
-			//I2B2Cell.authenticate(xx); // returns objects with infos about request
-
-            StandardQuery medcoQuery = new StandardQuery(request, medCoUtil.getUnlynxBinPath(), medCoUtil.getUnlynxGroupFilePath(),
-                    medCoUtil.getUnlynxDebugLevel(), medCoUtil.getUnlynxEntryPointIdx(), medCoUtil.getUnlynxProofsFlag(),
-                    medCoUtil.getI2b2Waittimems(), medCoUtil.getDataRepositoryCellUrl(), medCoUtil.getProjectManagementCellUrl());
-			int resultMode = 0;
-			int timeoutSeconds = MedCoUtil.getInstance().getI2b2Waittimems();//todo: from configuration add entry specific to unlynx
-
-
-			I2B2QueryResponse queryAnswer = medcoQuery.executeQuery();
-
+            // send back the response
 			StringWriter strWriter = new StringWriter();
 			MedCoUtil.getMsgUtil().marshallerWithCDATA(i2b2OF.createResponse(queryAnswer), strWriter,
 					new String[]{"observation_blob","patient_blob","observer_blob","concept_blob","event_blob"});
