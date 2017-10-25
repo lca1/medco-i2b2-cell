@@ -156,14 +156,13 @@ public class I2B2QueryResponse extends ResponseMessageType {
     public void setQueryResults(String pubKey, String encResult, JsonObject times) throws I2B2Exception {
 
         this.encCountResult = encResult;
-        XmlValueType xml = parsedBody.getQueryResultInstance().get(0).getMessage();
 
         JsonObject jsonResults = Json.object()
                 .add("pub_key", Json.value(pubKey))
                 .add("enc_count_result", Json.value(encResult))
                 .add("times", times);
 
-        xml.getContent().add(JSON_RESULT_XML_TAG_START + jsonResults.toString() + JSON_RESULT_XML_TAG_END);
+        parsedBody.getQueryResultInstance().get(0).setDescription(jsonResults.toString());
         Logger.debug("MedCo results string is " + jsonResults.toString());
         Logger.info("Query results set for query " + parsedBody.getQueryMaster().getName());
     }
@@ -172,21 +171,11 @@ public class I2B2QueryResponse extends ResponseMessageType {
         return encCountResult;
     }
 
-    // todo: put hardcoded xml tags as fields (also in setqueryresults)
     public Triplet<String, String, String> getQueryResults() throws I2B2XMLException {
-        XmlValueType xml = parsedBody.getQueryResultInstance().get(0).getMessage();
 
-        if (xml.getContent().size() != 1) {
-            Logger.warn("Incorrect number of values inside message.");
-        }
-
-
-        String unescapedResult = XMLUtil.unEscapeXmlValue((String) xml.getContent().get(0));
-        String jsonResultString = unescapedResult.substring(unescapedResult.indexOf(
-                JSON_RESULT_XML_TAG_START) + JSON_RESULT_XML_TAG_START.length(),
-                unescapedResult.lastIndexOf(JSON_RESULT_XML_TAG_END));
-
+        String jsonResultString = parsedBody.getQueryResultInstance().get(0).getDescription();
         JsonObject jsonResult = Json.parse(jsonResultString).asObject();
+
         String pubKey = jsonResult.getString("pub_key", "NOT_FOUND"),
                     encResult = jsonResult.getString("enc_count_result", "NOT_FOUND");
         JsonObject times = jsonResult.get("times").asObject();
