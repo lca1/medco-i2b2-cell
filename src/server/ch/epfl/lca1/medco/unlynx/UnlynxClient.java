@@ -50,12 +50,6 @@ public class UnlynxClient {
 	    // if empty save a request to unlynx
 	    if (encryptedQueryItems.size() == 0) {
 	        return new ArrayList<>();
-
-        // detect test case
-	    } else if (encryptedQueryItems.contains(Constants.CONCEPT_NAME_TEST_FLAG)) {
-            List<String> returnList = new ArrayList<>();
-            returnList.add(Constants.CONCEPT_NAME_TEST_FLAG);
-            return returnList;
         }
 
 	    // generate input stdout

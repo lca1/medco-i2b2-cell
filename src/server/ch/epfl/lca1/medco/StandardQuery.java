@@ -91,6 +91,13 @@ public class StandardQuery {
         List<String> encryptedQueryItems = extractEncryptedQueryTerms(false, false);
         Timers.get("steps").stop();
 
+        // intercept test query from SHRINE and bypass unlynx
+        if (encryptedQueryItems.contains(Constants.CONCEPT_NAME_TEST_FLAG)) {
+            Logger.info("Intercepted SHRINE status query (" + queryRequest.getQueryName() + ").");
+            replaceEncryptedQueryTerms(encryptedQueryItems);
+            return crcCell.queryRequest(queryRequest);
+        }
+
         // query unlynx to tag the query terms
         Timers.get("steps").start("Query tagging");
         List<String> taggedItems = unlynxClient.computeDistributedDetTags(queryRequest.getQueryName(), encryptedQueryItems);
