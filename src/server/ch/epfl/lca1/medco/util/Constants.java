@@ -39,7 +39,8 @@ public class Constants {
 
     public static String
             CONCEPT_KEY_ENCRYPTED_FLAG = "ENCRYPTED_KEY",
-            CONCEPT_PATH_TAGGED_PREFIX = "\\\\SENSITIVE_TAGGED\\medco\\tagged\\"; // todo: should be configurable
+            CONCEPT_PATH_TAGGED_PREFIX = "\\\\SENSITIVE_TAGGED\\medco\\tagged\\", // todo: should be configurable
+            CONCEPT_NAME_TEST_FLAG = "TESTKEY";
 
     /**
      * Regex patterns that matches query keys with encrypted term
