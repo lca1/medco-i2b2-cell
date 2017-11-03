@@ -88,7 +88,7 @@ public class StandardQuery {
 
         // retrieve the encrypted query terms
         Timers.get("steps").start("Query parsing/splitting");
-        List<String> encryptedQueryItems = extractEncryptedQueryTerms(false, false);
+        List<String> encryptedQueryItems = extractEncryptedQueryTerms();
         Timers.get("steps").stop();
 
         // intercept test query from SHRINE and bypass unlynx
@@ -181,29 +181,25 @@ public class StandardQuery {
     }
 
     /**
+     * todo: to rewrite
      * Extract from the i2b2 query the sensitive / encrypted items recognized by the prefix defined in {@link Constants}.
      * Accepts only panels fully clear or encrypted, i.e. no mix is allowed.
      * <p>
      * The predicate, if returned, has the following format:
      * (exists(v0, r) || exists(v1, r)) &amp;&amp; (exists(v2, r) || exists(v3, r)) &amp;&amp; exists(v4, r)
      *
-     * @param removePanels removes the encrypted panels when encountered if true
-     * @param getPredicate adds at the end of the returned list the corresponding predicate if true
      * @return the list of encrypted query terms and optionally the corresponding predicate
      * @throws MedCoException if a panel contains mixed clear and encrypted query terms
      */
-    private List<String> extractEncryptedQueryTerms(boolean removePanels, boolean getPredicate) throws MedCoException {
+    private List<String> extractEncryptedQueryTerms() throws MedCoException {
         // todo: handle cases: only clear no encrypt / only encrypt no clear
         // todo: must be modified if invertion implementation
 
         QueryDefinitionType qd = queryRequest.getQueryDefinition();
-        StringWriter predicateSw = new StringWriter();
         List<String> extractedItems = new ArrayList<>();
-        int encTermCount = 0;
 
         // iter on the panels
         for (int p = 0; p < qd.getPanel().size(); p++) {
-            boolean panelIsEnc = false, panelIsClear = false;
             PanelType panel = qd.getPanel().get(p);
 
             // iter on the items
@@ -213,57 +209,13 @@ public class StandardQuery {
                 // check if item is clear or encrypted, extract and generate predicate if yes
                 Matcher medcoKeyMatcher = Constants.REGEX_QUERY_KEY_ENC.matcher(panel.getItem().get(i).getItemKey());
                 if (medcoKeyMatcher.matches()) {
-
-                    if (i == 0) {
-                        predicateSw.append("(");
-                    }
-
                     extractedItems.add(medcoKeyMatcher.group(1));
-                    predicateSw.append("exists(v" + encTermCount++ + ", r)");
-
-                    if (i < nbItems - 1) {
-                        predicateSw.append(" || ");
-                    } else if (i == nbItems - 1) {
-                        predicateSw.append(")");
-                        if (p < qd.getPanel().size() - 1) {
-                            predicateSw.append(" &amp;&amp; ");
-                        }
-                    }
-
-                    Logger.debug("Extracted item " + extractedItems.get(extractedItems.size() - 1));
-                    panelIsEnc = true;
-                } else {
-                    panelIsClear = true;
+                    Logger.debug("Extracted item " + extractedItems.get(extractedItems.size() - 1) + "; panel=" + p + ", item=" + i);
                 }
-
-                // enforce that a panel can only be one type
-                if (panelIsClear && panelIsEnc) {
-                    throw Logger.error(new MedCoException("Encountered panel with mixed clear and encrypted query terms: not allowed."));
-                }
-            }
-
-            // remove panel and log
-            if (panelIsEnc) {
-                if (removePanels) {
-                    qd.getPanel().remove(panel);
-                    p--;
-                    Logger.debug("Removed encrypted panel");
-                }
-                Logger.debug("Encountered encrypted panel");
-            } else if (panelIsClear) {
-                Logger.debug("Encountered clear panel");
-            } else {
-                Logger.warn("Encountered empty panel in query " + qd.getQueryName());
             }
         }
 
-        String predicate = predicateSw.toString();
-        Logger.info("Extracted " + extractedItems.size() + " encrypted query terms and generated unlynx predicate with " +
-                encTermCount + " terms: " + predicate + " for query " + queryRequest.getQueryName());
-
-        if (getPredicate) {
-            extractedItems.add(predicate);
-        }
+        Logger.info("Extracted " + extractedItems.size() + " encrypted query terms for query " + queryRequest.getQueryName());
         return extractedItems;
     }
 
