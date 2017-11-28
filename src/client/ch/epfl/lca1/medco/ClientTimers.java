@@ -7,32 +7,38 @@ public class ClientTimers {
 
     static double tt                = 0; // Overall time
 
+    static double userinfo          = 0; // user information retrieval
     static double qpi2b2            = 0; // Query parsing i2b2
-    static double clearqueryi2b2    = 0; // Clear query i2b2
+    static double qt                = 0; // Query tagging
+    static double i2b2query         = 0; // i2b2 query
     static double psretrieval       = 0; // Patient set retrieval
 
-    static double eqp               = 0; // Patient set encrypted data retrieval
+    static double ddtet             = 0; // ddt request exec time
+    static double ddtct             = 0; // ddt request comm time
+    static double ddtpt             = 0; // ddt request parsing time
 
-    static double utt               = 0; // Unlynx overall time
-    static double uet               = 0; // Unlynx total execution time
-    static double uct               = 0; // Unlynx total communication time
+    static double agget             = 0; // agg req exec time
+    static double aggpt             = 0; // agg req parsing time
+    static double aggat             = 0; // agg req agg time
+    static double aggct             = 0; // agg req comm time
 
-    static double qpunlynx          = 0; // Query/Data parsing Unlynx
-    static double broadcast         = 0; // Total broadcast time (unlynx client -> unlynx server)
+    // -- first run
+    static double first_tt                = 0; // Overall time
 
-    static double ddtqet            = 0; // Total DDT (of the query) execution time
-    static double ddtqct            = 0; // Total DDT (of the query communication time
+    static double first_userinfo          = 0; // user information retrieval
+    static double first_qpi2b2            = 0; // Query parsing i2b2
+    static double first_qt                = 0; // Query tagging
+    static double first_i2b2query         = 0; // i2b2 query
+    static double first_psretrieval       = 0; // Patient set retrieval
 
-    static double ddtdet            = 0; // Total DDT (of the data) execution time
-    static double ddtdct            = 0; // Total DDT (of the data) communication time
+    static double first_ddtet             = 0; // ddt request exec time
+    static double first_ddtct             = 0; // ddt request comm time
+    static double first_ddtpt             = 0; // ddt request parsing time
 
-    static double aet               = 0; // Total aggregation execution time
-
-    static double set               = 0; // Total shuffling executiontime
-    static double sct               = 0; // Total shuffling communication  time
-
-    static double kset              = 0; // Total key switching execution time
-    static double ksct              = 0; // Total key switching communication time
+    static double first_agget             = 0; // agg req exec time
+    static double first_aggpt             = 0; // agg req parsing time
+    static double first_aggat             = 0; // agg req agg time
+    static double first_aggct             = 0; // agg req comm time
 
 
     public ClientTimers(){}
@@ -42,31 +48,38 @@ public class ClientTimers {
 
         tt = tt/num;
 
+        userinfo = userinfo/num;
         qpi2b2 = qpi2b2/num;
-        clearqueryi2b2 = clearqueryi2b2/num;
+        qt = qt/num;
+        i2b2query = i2b2query/num;
         psretrieval = psretrieval/num;
 
-        eqp = eqp/num;
+        ddtet = ddtet/num;
+        ddtct = ddtct/num;
+        ddtpt = ddtpt/num;
 
-        utt = utt/num;
-        uet = uet/num;
-        uct = uct/num;
+        agget = agget/num;
+        aggpt = aggpt/num;
+        aggat = aggat/num;
+        aggct = aggct/d;
 
-        qpunlynx = qpunlynx/num;
-        broadcast = broadcast/num;
+        // -- first run
+        first_tt = first_tt/nbrServers;
 
-        ddtqet = ddtqet/num;
-        ddtqct = ddtqct/d;
+        first_userinfo = first_userinfo/nbrServers;
+        first_qpi2b2 = first_qpi2b2/nbrServers;
+        first_qt = first_qt/nbrServers;
+        first_i2b2query = first_i2b2query/nbrServers;
+        first_psretrieval = first_psretrieval/nbrServers;
 
-        ddtdet = ddtdet/num;
-        ddtdct = ddtdct/d;
+        first_ddtet = first_ddtet/nbrServers;
+        first_ddtct = first_ddtct/nbrServers;
+        first_ddtpt = first_ddtpt/nbrServers;
 
-        aet = aet/num;
+        first_agget = first_agget/nbrServers;
+        first_aggpt = first_aggpt/nbrServers;
+        first_aggat = first_aggat/nbrServers;
+        first_aggct = first_aggct;
 
-        set = set/num;
-        sct = sct/d;
-
-        kset = kset/num;
-        ksct = ksct/d;
     }
 }

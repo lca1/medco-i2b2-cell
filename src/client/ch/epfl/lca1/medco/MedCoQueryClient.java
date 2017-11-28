@@ -13,9 +13,18 @@ import org.apache.log4j.BasicConfigurator;
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 import org.javatuples.Triplet;
+
+import javax.net.ssl.HttpsURLConnection;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.X509TrustManager;
 import java.io.PrintWriter;
 
 import java.io.StringWriter;
+import java.security.GeneralSecurityException;
+import java.security.KeyManagementException;
+import java.security.NoSuchAlgorithmException;
+import java.security.cert.X509Certificate;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -24,12 +33,41 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public class MedCoQueryClient {
 
+//    static void  disableCertificateValidation() {
+//
+//        // Create a trust manager that does not validate certificate chains
+//        TrustManager[] trustAllCerts = new TrustManager[] {
+//                new X509TrustManager() {
+//                    public java.security.cert.X509Certificate[] getAcceptedIssuers() {
+//                        return new X509Certificate[0];
+//                    }
+//                    public void checkClientTrusted(
+//                            java.security.cert.X509Certificate[] certs, String authType) {
+//                    }
+//                    public void checkServerTrusted(
+//                            java.security.cert.X509Certificate[] certs, String authType) {
+//                    }
+//                }
+//        };
+//
+//        // Install the all-trusting trust manager
+//        try {
+//            SSLContext sc = SSLContext.getInstance("SSL");
+//            sc.init(null, trustAllCerts, new java.security.SecureRandom());
+//            HttpsURLConnection.setDefaultSSLSocketFactory(sc.getSocketFactory());
+//        } catch (GeneralSecurityException e) {
+//            e.printStackTrace();
+//        }
+//    }
+
     /**
      * Output on stderr information of the query, output on stdout the times
      *
      * @param args
      */
     public static void main(String[] args) throws InterruptedException {
+
+        //disableCertificateValidation();
 
         // disable all logging (to control all output)
         BasicConfigurator.configure();
@@ -38,6 +76,8 @@ public class MedCoQueryClient {
         // get parameters from command-line and set the client configuration
         CommandLine cmd = parseCli(args);
         String[] serversUrl = cmd.getOptionValues("server");
+        boolean querySHRINE = (serversUrl.length == 1);
+
         String queryName = cmd.getOptionValue("name");
         String queryId = cmd.getOptionValue("query");
         int numRepetitions;
@@ -65,7 +105,7 @@ public class MedCoQueryClient {
 
             // generate request
             MedCoI2b2MessageHeader auth = new MedCoI2b2MessageHeader(domain, projectId, username, false, 0, password);
-            List<List<String>> parsedQuery = parseQuery(Integer.parseInt(queryId));
+            List<List<String>> parsedQuery = parseQuery(Integer.parseInt(queryId), querySHRINE);
             I2B2QueryRequest request = new I2B2QueryRequest(auth);
             request.setQueryDefinition(queryName, parsedQuery);
 
@@ -77,8 +117,16 @@ public class MedCoQueryClient {
                 final int i_cpy = i;
                 queryThreads[i] = new Thread(() -> {
                     try {
-                        I2B2MedCoCell medCoCell = new I2B2MedCoCell(serversUrl[i_cpy], auth);
-                        I2B2QueryResponse response = medCoCell.medcoQuery(request);
+
+                        //todo: do better
+                        I2B2QueryResponse response = null;
+                        if (querySHRINE){
+                            SHRINECell shrineCell = new SHRINECell(serversUrl[0], auth);
+                            response = shrineCell.shrineQuery(request);
+                        } else {
+                            I2B2MedCoCell medCoCell = new I2B2MedCoCell(serversUrl[i_cpy], auth);
+                            response = medCoCell.medcoQuery(request);
+                        }
                         Triplet<String, String, String> results = response.getQueryResults();
 
                         timesJsonOutput.put(i_cpy, results.getValue2());
@@ -102,56 +150,62 @@ public class MedCoQueryClient {
             }
 
             // output in stdout the times
-            double tmp1, tmp2, tmp3, tmp4;
-            tmp1 = tmp2 = tmp3 = tmp4 = 0;
+            double tmp1, tmp2;
+            tmp1 = tmp2 = 0;
             for (Map.Entry<Integer, String> result : timesJsonOutput.entrySet()) {
                 System.out.println("{\"" + result.getKey() + "\":" + result.getValue() + "}");
 
                 JsonObject jsonResult = Json.parse(result.getValue()).asObject();
 
-                ts.tt += jsonResult.getInt("Overall (axis2 in/out)", 0);
-                ts.qpi2b2 += jsonResult.getInt("Query parsing/splitting", 0);
-                ts.clearqueryi2b2 += jsonResult.getInt("Clear query: i2b2 query", 0);
-                ts.psretrieval += jsonResult.getInt("Clear query: patient set retrieval", 0);
-                ts.eqp += jsonResult.getInt("Patient set encrypted data retrieval", 0);
-                ts.utt += jsonResult.getInt("Unlynx query", 0);
-                ts.uet += jsonResult.getInt("Unlynx execution time", 0);
-                ts.uct += jsonResult.getInt("Unlynx communication time", 0);
+                ts.tt += jsonResult.get("overall").asObject().getInt("", 0);
+                ts.userinfo += jsonResult.get("steps").asObject().getInt("User information retrieval", 0);
+                ts.qpi2b2 += jsonResult.get("steps").asObject().getInt("Query parsing/splitting", 0);
+                ts.qt += jsonResult.get("steps").asObject().getInt("Query tagging", 0);
+                ts.i2b2query += jsonResult.get("steps").asObject().getInt("i2b2 query", 0);
+                ts.psretrieval += jsonResult.get("steps").asObject().getInt("i2b2 patient set retrieval", 0);
 
-                ts.qpunlynx += jsonResult.getInt("Parsing time", 0);
-                ts.broadcast += jsonResult.getInt("Broadcasting time", 0);
+                ts.ddtet += jsonResult.getInt("DDTRequest execution time", 0);
+                ts.ddtct += jsonResult.getInt("DDTRequest communication time", 0);
+                ts.ddtpt += jsonResult.getInt("DDTRequest parsing time", 0);
 
-                ts.ddtqet += jsonResult.getInt("DDT Query execution time", 0);
-                if (jsonResult.getInt("DDT Query communication time", 0) > tmp1)
-                    tmp1 = jsonResult.getInt("DDT Query communication time", 0);
+                ts.agget += jsonResult.getInt("AggRequest execution time", 0);
+                ts.aggpt += jsonResult.getInt("AggRequest parsing time", 0);
+                ts.aggat += jsonResult.getInt("AggRequest aggregation time", 0);
+                if (jsonResult.getInt("AggRequest communication time", 0) > tmp1)
+                    tmp1 = jsonResult.getInt("AggRequest communication time", 0);
 
-                ts.ddtdet += jsonResult.getInt("DDT Data execution time", 0);
-                if (jsonResult.getInt("DDT Data communication time", 0) > tmp2)
-                    tmp2 = jsonResult.getInt("DDT Data communication time", 0);
 
-                ts.aet += jsonResult.getInt("Aggregation time", 0);
+                // first run
+                if (rep == 0) {
+                    ts.first_tt += jsonResult.get("overall").asObject().getInt("", 0);
+                    ts.first_userinfo += jsonResult.get("steps").asObject().getInt("User information retrieval", 0);
+                    ts.first_qpi2b2 += jsonResult.get("steps").asObject().getInt("Query parsing/splitting", 0);
+                    ts.first_qt += jsonResult.get("steps").asObject().getInt("Query tagging", 0);
+                    ts.first_i2b2query += jsonResult.get("steps").asObject().getInt("i2b2 query", 0);
+                    ts.first_psretrieval += jsonResult.get("steps").asObject().getInt("i2b2 patient set retrieval", 0);
 
-                ts.set += jsonResult.getInt("Shuffling execution time", 0);
-                if (jsonResult.getInt("Shuffling communication time", 0) > tmp3)
-                    tmp3 = jsonResult.getInt("Shuffling communication time", 0);
+                    ts.first_ddtet += jsonResult.getInt("DDTRequest execution time", 0);
+                    ts.first_ddtct += jsonResult.getInt("DDTRequest communication time", 0);
+                    ts.first_ddtpt += jsonResult.getInt("DDTRequest parsing time", 0);
 
-                ts.kset += jsonResult.getInt("Key Switching execution time", 0);
-                if (jsonResult.getInt("Key Switching communication time", 0) > tmp4)
-                    tmp4 = jsonResult.getInt("Key Switching communication time", 0);
+                    ts.first_agget += jsonResult.getInt("AggRequest execution time", 0);
+                    ts.first_aggpt += jsonResult.getInt("AggRequest parsing time", 0);
+                    ts.first_aggat += jsonResult.getInt("AggRequest aggregation time", 0);
+                    if (jsonResult.getInt("AggRequest communication time", 0) > tmp2)
+                        tmp2 = jsonResult.getInt("AggRequest communication time", 0);
+                }
+
 
             }
 
-            ts.ddtqct += tmp1;
-            ts.ddtdct += tmp2;
-            ts.sct += tmp3;
-            ts.ksct += tmp4;
+            ts.aggct += tmp1;
+            ts.first_aggct += tmp2;
 
             System.out.flush();
 
         }
 
-        // 1000 is to convert ms to secs
-        ts.Divide(timesJsonOutput.size(), 1000*numRepetitions);
+        ts.Divide(timesJsonOutput.size(), numRepetitions);
 
         // todo: client pub / priv keys --> hardcoded in axis2 service
 
@@ -165,53 +219,28 @@ public class MedCoQueryClient {
     private static void storeTimers(String filename, ClientTimers ts){
         try{
             PrintWriter writer = new PrintWriter(filename, "UTF-8");
-            writer.println("QUERY: ");
-            writer.println("Overall time: " + Double.toString(ts.tt));
+            writer.println("QUERY FIRST RUN / AVERAGES: ");
+            writer.println("Overall time: " + Double.toString(ts.first_tt) + " / " + Double.toString(ts.tt));
 
             writer.println("");
 
-            writer.println("Query parsing i2b2: " + Double.toString(ts.qpi2b2));
-            writer.println("Clear query i2b2: " + Double.toString(ts.clearqueryi2b2));
-            writer.println("Patient set retrieval: " + Double.toString(ts.psretrieval));
+            writer.println("user information retrieval: " + Double.toString(ts.first_userinfo) + " / " + Double.toString(ts.userinfo));
+            writer.println("Query parsing i2b2: " + Double.toString(ts.first_qpi2b2) + " / " + Double.toString(ts.qpi2b2));
+            writer.println("Query tagging: " + Double.toString(ts.first_qt) + " / " + Double.toString(ts.qt));
+            writer.println("i2b2 query: " + Double.toString(ts.first_i2b2query) + " / " + Double.toString(ts.i2b2query));
+            writer.println("Patient set retrieval: " + Double.toString(ts.first_psretrieval) + " / " + Double.toString(ts.psretrieval));
 
             writer.println("");
 
-            writer.println("Encrypted Query preparation: " + Double.toString(ts.eqp));
+            writer.println("ddt request exec time: " + Double.toString(ts.first_ddtet) + " / " + Double.toString(ts.ddtet));
+            writer.println("ddt request comm time: " + Double.toString(ts.first_ddtct) + " / " + Double.toString(ts.ddtct));
+            writer.println("ddt request parsing time: " + Double.toString(ts.first_ddtpt) + " / " + Double.toString(ts.ddtpt));
 
-            writer.println("");
+            writer.println("agg req exec time: " + Double.toString(ts.first_agget) + " / " + Double.toString(ts.agget));
+            writer.println("agg req parsing time: " + Double.toString(ts.first_aggpt) + " / " + Double.toString(ts.aggpt));
+            writer.println("agg req agg time: " + Double.toString(ts.first_aggat) + " / " + Double.toString(ts.aggat));
+            writer.println("agg req comm time: " + Double.toString(ts.first_aggct) + " / " + Double.toString(ts.aggct));
 
-            writer.println("Unlynx overall time: " + Double.toString(ts.utt));
-            writer.println("Unlynx total execution time: " + Double.toString(ts.uet));
-            writer.println("Unlynx total communication time: " + Double.toString(ts.uct));
-
-            writer.println("");
-
-            writer.println("Query/Data parsing Unlynx: " + Double.toString(ts.qpunlynx));
-            writer.println("Total broadcast time (unlynx client -> unlynx server): " + Double.toString(ts.broadcast));
-
-            writer.println("");
-
-            writer.println("DDT Query (execution time): " + Double.toString(ts.ddtqet));
-            writer.println("DDT Query (communication time): " + Double.toString(ts.ddtqct));
-
-            writer.println("");
-
-            writer.println("DDT Data (execution time): " + Double.toString(ts.ddtdet));
-            writer.println("DDT Data (communication time): " + Double.toString(ts.ddtdct));
-
-            writer.println("");
-
-            writer.println("Aggregation (execution time): " + Double.toString(ts.aet));
-
-            writer.println("");
-
-            writer.println("Shuffling (execution time): " + Double.toString(ts.set));
-            writer.println("Shuffling (communication time): " + Double.toString(ts.sct));
-
-            writer.println("");
-
-            writer.println("Key Switching (execution time): " + Double.toString(ts.kset));
-            writer.println("Key Switching (communication time): " + Double.toString(ts.ksct));
             writer.close();
         } catch (Exception e) {
             e.printStackTrace();
@@ -221,9 +250,11 @@ public class MedCoQueryClient {
     /**
      * parse query, ex: X OR Y AND F AND Z OR H ==> (X OR Y) AND (F) AND (Z OR H)
      */
-    private static List<List<String>> parseQuery(int queryId) {
+    private static List<List<String>> parseQuery(int queryId, boolean useSHRINE) {
         List<List<String>> parsedQuery = new ArrayList<>();
-        String[] orTerms = getQueryUseCase(queryId).split(" AND ");
+        String[] orTerms = useSHRINE ?
+                getShrineQueryUseCase(queryId).split(" AND ") :
+                getQueryUseCase(queryId).split(" AND ");
 
         for (String orTerm : orTerms) {
             String[] terms = orTerm.split(" OR ");
@@ -308,18 +339,355 @@ public class MedCoQueryClient {
         return cmd;
     }
 
+    // todo: use this to send to shrine
+    private static String getShrineQueryUseCase(int nb) {
+        switch (nb) {
+
+            case 101: // use-case 1 medco-normal encrypted
+                return
+                        // skin -> MEDCO_ENC:1	; cut melanoma: MEDCO_ENC:2
+                        "\\\\ENCRYPTED_KEY\\ZJGanAVkwmYlFIA49fcj47udIoVzDNIGvnGL6C29dtlk/CEt2bqhFoe+fFQ35qiFnRZo6kice7GWm+A1y1IArA==\\" +
+                                " AND " +
+                                "\\\\ENCRYPTED_KEY\\IF1ZzAX6xZnpPKBFCZGSriAXuY7PsKWbSkOnBwmDFj2lQZ3/wn+HmWcupHR0A7maSr4YJnGkyNXKnP3AvkpDwQ==\\" +
+                                " AND " +
+
+                                // variants ids for [Hugo_Symbol=BRAF AND Protein_Position=600/766]
+                                "\\\\ENCRYPTED_KEY\\odaeRfdWL+IRaCcZp5NMUtCUT8NW4ldAlHLRMWBl4gsO5dmlQ0xfy2ORNFuSLygRRymF7ld9XM87o8/ewy9LaA==\\ OR " +
+                                "\\\\ENCRYPTED_KEY\\ZsM3nNP0zGWEmbhUcWmJAb0PWtGMRWJwHGI4RjBRyCht3rZjGDJWu5XYhkh1z3eSUOAVY/jwrdopn/220I5jOg==\\ OR " +
+                                // 2 replacement variants for when the limit 50000 (desc sorted by concept_cd) are deleted
+                                "\\\\ENCRYPTED_KEY\\5MbgrJvcvJdHBWJ+zwpXC9bunSNqtpVhp3j9gHew2w5BaCm/WKjkkdw3zZi0c4Mv+kFL/KUcQrC/yBIDuTAD1w==\\ OR " +
+                                "\\\\ENCRYPTED_KEY\\o/ZiHbcXWC76DvuOD/3F+tKaD8jUTyZLVAE7ym1kWznwQr8XyYxg4v0KxKYPPws0tTtQpqpslfwh0KePDgfVZg==\\";
+
+            case 102: // use-case 2 medco-normal encrypted
+                return
+                        // skin -> MEDCO_ENC:1	; cut melanoma: MEDCO_ENC:2
+                        "\\\\ENCRYPTED_KEY\\ZJGanAVkwmYlFIA49fcj47udIoVzDNIGvnGL6C29dtlk/CEt2bqhFoe+fFQ35qiFnRZo6kice7GWm+A1y1IArA==\\" +
+                                " AND " +
+                                "\\\\ENCRYPTED_KEY\\IF1ZzAX6xZnpPKBFCZGSriAXuY7PsKWbSkOnBwmDFj2lQZ3/wn+HmWcupHR0A7maSr4YJnGkyNXKnP3AvkpDwQ==\\" +
+                                " AND " +
+//["-7054948997223410688",
+// "-7054948998062267136",
+// "-7054968999892742144",
+// "-7054948999337337856",
+// "-7054948997064022784",
+// "-7054953138544961536",
+// "-7054948997064020736",
+// "-7054923607457132544",
+// "-7054904773018905600",
+// "-7054898625779855360",
+// "-7054948987408734208",
+// "-7054923379857424384",
+// "-7054917142457610240",
+// "-7054861692282335232",
+// "-7054948050082458624",
+// "-7054922546600210432",
+// "-7054949048695910400",
+// "-7054923381098933248",
+// "-7054861517262417920",
+// "-7054918645662608384",
+// "-7054905185268658176",
+// "-7054904954414166016",
+// "-7054898626853597184",
+// "-7054904932905773056",
+// "-7054861823278837760"]}
+                                // variants ids for [Hugo_Symbol=BRAF AND (PTEN OR CDKN2A OR MAP2K1 OR MAP2K2)]
+                                "\\\\ENCRYPTED_KEY\\PLAnpWTz8C92IPKXf7vFNQVeBWUP6bH7XbhDNAYfqhPoxZwY02SRRLFO2QEIxF2v3YtyHD4RoHO8mHrZ23Usdg==\\ OR " +
+                                "\\\\ENCRYPTED_KEY\\ATWzLIq9+Q5P6foLqYK9UoUzWOuAzUZQz98WFER/cOS0rzVgD/fPLIg/R671gqm9+Ps1kGBgStRfSwSaYBIfhg==\\ OR " +
+                                "\\\\ENCRYPTED_KEY\\WCC2LTY3Isd1hTL+USIcA4c8whnKY2aANdCipORs2Kh6XquUDXQXZFe5uX8JHgjG/rivMUS1FHR7p8m01RjPzw==\\ OR " +
+                                "\\\\ENCRYPTED_KEY\\jutng4OJnR7wMheVo10DU8lR9LcISSmsYNc3vLE0anxV/Zp4qTgfOl+bHSeETh0KijSkgyOGcD54ANSukbIE1A==\\ OR " +
+                                "\\\\ENCRYPTED_KEY\\zMA8yk0AfuxhOrce5a3xp8jD2hjLSqr8Wg39TCs+F1V4hKSdUUuAK/2eAH8yhpnyeZuuKugMa4v0Oylcgu27NA==\\ OR " +
+                                "\\\\ENCRYPTED_KEY\\PDFvuwlzyliqi5EN+7oxR4Ty93sO9AjHAlXrslzhJC5n22LzypScZ2z4cB978VIfFbcJ3R9yMI1t9nJuAHYgPw==\\ OR " +
+                                "\\\\ENCRYPTED_KEY\\Z6RWKoFkTps3QgnKGy7amEPligC06guuqZDgq4Bgb0++OzMBZxMx5a9QPQZwjQXyTwSwCO+BRQTGq0deCDWTPw==\\ OR " +
+                                "\\\\ENCRYPTED_KEY\\Lh/mji7/cfSxo0ST1ghA9c/INwK0RnJgoScx8tA+bHfbUW4g86gVVTd8isCOQ42ZPCmMfesUdfEeTv+PQRpINA==\\ OR " +
+                                "\\\\ENCRYPTED_KEY\\Lx+4gPhvFdvWi1zqurn+fIBW1qwoj2fJ1xuf/03Ia7gWGSWw2UX/6oiGryWPJUaTZ05hDoUx7OkbXuu7luA3wg==\\ OR " +
+                                "\\\\ENCRYPTED_KEY\\XMhy6tn2jsRMA5Mnt9rGXpQOm3snvLarQ9sTfi9/Q4Jyt+qXCLPTMDNgDVYGvNg0vbS09O327PdenlHQo0Edrg==\\ OR " +
+                                "\\\\ENCRYPTED_KEY\\oN7FF1vPVFFcxkKPXPYqZjNDmc2C6Re4PO0df9T8CyVghEpkiZD9Y/PL2rWzQ6cIeC53z3xtFFGdfSe/siic9A==\\ OR " +
+                                "\\\\ENCRYPTED_KEY\\PEnbzWHipkx7TGO1l+TD2SxrYKOP+itkP1oUuyzNDJiKZRc1SAdFt98y+x6MWaL2RRhmDx66SDzGUK9QbURu5Q==\\ OR " +
+                                "\\\\ENCRYPTED_KEY\\ldsIkxWoqmOF3CV4dwKkFXHnr2qtwoyCs627dRRn+pBgnSCGf97EbM6PY/pF6z6iDyGIFqemX3pXyGjrMFTLXA==\\ OR " +
+                                "\\\\ENCRYPTED_KEY\\aydcWfgDG1tKTl411kaUbOs+lqzb03hoHujJ1g9Z5ysvHQPqPXoHeRqdI9BbAbwG40Wx5xHGFu8bOf9+J88Y0Q==\\ OR " +
+                                "\\\\ENCRYPTED_KEY\\Nr7sqxGYcaxwaPpJl6DiedE2xZzSCWH1A9BB+J5BMVsVO4qdYENbAi7Si/BH1fyTkbEY9cIDmBZVuXoJAzqwVw==\\ OR " +
+                                "\\\\ENCRYPTED_KEY\\gRfm7D5SGXJTjIiJOLFJiCnD9TQbYBb6+VdkTSVlEM3Qdaf4fR3pC4yE7KhdHtoJd3pQTeNeOC/QxzdZ+2ndug==\\ OR " +
+                                "\\\\ENCRYPTED_KEY\\5/uO6PNye73N+AE4dD6Y/m5s+UuCx1xz/wOeX8n3vAEEURODb4aZTpkFiLAF6PpshkQdnHjYRT4aolbZaEm+Ug==\\ OR " +
+                                "\\\\ENCRYPTED_KEY\\2bbFMyB9r/UVMVYFjurdp/qxdwZMnBDZHC33uMkHOdi61flyTNz4Ra6rgJjlCULSPHyxBBR/vHGzZQW6AKpx8w==\\ OR " +
+                                "\\\\ENCRYPTED_KEY\\5MbgrJvcvJdHBWJ+zwpXC9bunSNqtpVhp3j9gHew2w5BaCm/WKjkkdw3zZi0c4Mv+kFL/KUcQrC/yBIDuTAD1w==\\ OR " +
+                                "\\\\ENCRYPTED_KEY\\o/ZiHbcXWC76DvuOD/3F+tKaD8jUTyZLVAE7ym1kWznwQr8XyYxg4v0KxKYPPws0tTtQpqpslfwh0KePDgfVZg==\\ OR " +
+                                "\\\\ENCRYPTED_KEY\\h5yUAXpNZv/FrqixPJEeh1TUM0S4CUYVAqkL/oCaC8VbDe35CHcKl9esPADZzzueywuSdrSKud90YJi+QjOn0w==\\ OR " +
+                                "\\\\ENCRYPTED_KEY\\41QQR9gLvUDoeszN/cBu7+bx9JWiaJ5W064s6fBgUJpwpSwqAKVRrMO54D/PN2Gh6C8K7fk1ULUxSpJakchDGw==\\ OR " +
+                                "\\\\ENCRYPTED_KEY\\4hhxdvZrPqGh16U+ExdXZy3pAK+uhwlNQhp8vBlH4ShBjpzk6Pxze/10kSC8YfgfcIAFaRWjGVmdOnD+aNPRqA==\\ OR " +
+                                "\\\\ENCRYPTED_KEY\\mgpDqM/u1hQGXz8JcD2jmOTuXQ6s918K9Ws2nSBVjYmb4pAGZhEdzqF0uJYUU8Mf9SWHC58Q6V7BKVYTmWNQow==\\ OR " +
+                                "\\\\ENCRYPTED_KEY\\fJBpEfSExkqebV25eyOwITyT20pIe4axMJBUzWz6AcIq6ZxUOJRCiBSRN7qQLg5WrKWjgu8EilLXMevC/s4mqA==\\" +
+                                " AND " +
+                                "\\\\ENCRYPTED_KEY\\5QR7ELo5r8SBp42YTB24EmlXaUj2VfUYpmGVDdBVevmW9JFrBVVi8BbQvqNJpNVL3CITBgVXVD3mWOzt0xpB3w==\\ OR " +
+                                "\\\\ENCRYPTED_KEY\\Peacr2BXY6auBK9TbfX0e/XvAAaGCO5AA2hFWw8vON0/uggBIqHCMcvYluzzFT45wnR7f53DC4R6uKwQIZu2qw==\\ OR " +
+                                "\\\\ENCRYPTED_KEY\\ZBV/osNnmVcIHIef1Tb+BpB49C8AV39dKoULEHKOF/rRH1sZHpa3pmEWzhUkVhg5gzhwh7NnckiLuNvFf18xnA==\\ OR " +
+                                "\\\\ENCRYPTED_KEY\\bRXoSlsmoaYseQ7l8Qzw0g9C7xN5OKSyekmHOOBH5M/gT/qFGxGI3IZjNxy8fD8il3t+HJBuGKyAqf4/JH1feg==\\ OR " +
+                                "\\\\ENCRYPTED_KEY\\rCh4Vp63vQo1WRKUPtKU9POTRdL0lXk83rtajUcJiNJyBsh5PWkDcAgPR5yByxSL3yNRd2AhndAETBxCgrtKIw==\\ OR " +
+                                "\\\\ENCRYPTED_KEY\\WkrM4sETE2n99Kyqj6UC33AoaJQmpr6vyzh0mSWhoSpUEZmJLR3Aq6ckmUvixQfL25F/3lvaDr46O9x3Mm4Mxg==\\ OR " +
+                                "\\\\ENCRYPTED_KEY\\Gdiwb3+EyPrq62cILQtTcoKHeDmRLP5hsDN7pl3AoTCXaR7bMwI8NyTTa4BzhjNte9xqHlvokz6GzCgAFBXzsg==\\ OR " +
+                                "\\\\ENCRYPTED_KEY\\vmk+wH+9PmrWFE7dMq1fJM88Ce2Y5e6v+D9P82aTsDG0mvqFxbFFLQ3kKyJUbYQyAWWr8aPZuCbW7vQ0MA0YHA==\\ OR " +
+                                "\\\\ENCRYPTED_KEY\\TuIViS0nN83clzhVgmk8koAbcQVt496N9d9qrfX0rA9mWqoQ2vwRcHPxQYzrMPQTLabItwxKQmPX+mqniMBGtg==\\ OR " +
+                                "\\\\ENCRYPTED_KEY\\pTsywvX60l8K9OB2/frNzOyOrpxKKTi1+J7YK9reMIPJAOR44p7z1e1OMGzddAKPceTVTkZCYd2+ex3pHVxt1g==\\ OR " +
+                                "\\\\ENCRYPTED_KEY\\Dfb1fjwCOirZIDsPWZRl3p1TpHi7L0TOFXlDWKy3Mv7WT0YUC7Nu7t2WStbjec25UXeigMj84JW79bsm+sOGuQ==\\ OR " +
+                                "\\\\ENCRYPTED_KEY\\3R5bDkQyG2TV7Ae+pElZS8T5yOdB4OPYyISMuhwj5VrWbq9C+1Ze6Dlda7giHp0MjzwzZDOrieA0deX9MNxhKQ==\\ OR " +
+                                "\\\\ENCRYPTED_KEY\\rbP8hzF22hq1LC67qEZjQJ/zpTy8lC5UiKVvUuNQuNpDp1lZ1qAeSRNIVtmuYf0waNqxcpJgjl6TPV7Yviu4mA==\\ OR " +
+                                "\\\\ENCRYPTED_KEY\\5oE2zWlMXT5Wh1G+yTXI0fmKKXdFQB3Yt7jm00KSsdj0mj3mDmsShMMcGaq9+8S+xEL1VyLzakxmp+LUKZ9svQ==\\ OR " +
+                                "\\\\ENCRYPTED_KEY\\Q7C/6FtBqfqxBDgquat9juJyMK+1fa3hU4tsqGzovNMnitGyd0hGMH8kjHt0X2YEvhPZh83Gc91Oqc/kcu/U5Q==\\ OR " +
+                                "\\\\ENCRYPTED_KEY\\JPLQkyVY2cmzM+ypf2qwieO3y0rr0bEUsJ05VV9xLFNSugPyXnb6dAU6E1OFA3tAU2+w2/MIYkBnQRYCKDKzTA==\\ OR " +
+                                "\\\\ENCRYPTED_KEY\\4S/AKzCHAq9ak/ekP1RJqukzcnsu6gCLV+7O6yBUgCK554uBlwzrlbHMlm6T0NHS5jnugsOJswCD5jE17GoocA==\\ OR " +
+                                "\\\\ENCRYPTED_KEY\\uhKHddj2VK8EXhS6EXX12ZKnpae8+OS+apj1b2XUUzl9oWh7BeGHThjduiDQkrED78Y8ybAqJG3SRPKi8UVo3Q==\\ OR " +
+                                "\\\\ENCRYPTED_KEY\\cPoDXT719zMiNBZlhaadjYTzopzOlXA0gpYJU8Wak0GBfceBaB23teTlC6bIqCDhDo8eJfN9hAeXe3ofKmuBHA==\\ OR " +
+                                "\\\\ENCRYPTED_KEY\\FLoHMX6nCBSflJOf8SRPZ0nnqgPQ76jZmWmcD7UFIc41Jpy2GDSX2O71T+iw+X0NBHBORAqwBmHcFADXCMgNdA==\\ OR " +
+                                "\\\\ENCRYPTED_KEY\\WAcnqYvx9LJCBurqbvO1f+fQoBhTM9i0c15YTHuHGiVv33VwZC0WTCCuKokngEDPR0/VCvG9rQ+67WtfLkAsfQ==\\ OR " +
+                                "\\\\ENCRYPTED_KEY\\UoFUOBelqpeswaM95OoXjJ0h/rPLzu9MBHMM19xUjAexQ/luRjdPQgTa4Huaq+qJx/O57i4O18G+baxHWz3bVA==\\ OR " +
+                                "\\\\ENCRYPTED_KEY\\WKd1A4k9SunHNVeOjDTN16LlS6NpQuQTeE92tQBNp7SlOzvp+U3oyydtiuVMeinVHpxzy/rVD9YuT7UuVQoWqg==\\ OR " +
+                                "\\\\ENCRYPTED_KEY\\+zY+CpTiWomTFYR5RKNjsD/jA1XeHuUCUzt1uS8VYWb3sqjj57uveI8FCGNoQjzjRo/uRsQ7tlsH6A7re0MeCg==\\ OR " +
+                                "\\\\ENCRYPTED_KEY\\FUqk1EpQRVemkC2I6WFz6WbmkPNHNCv4LEN0suK/BkghU+r85CQqiK8qfJzhy2mLluR5v79xbKESEjU3ft+LzQ==\\ OR " +
+                                "\\\\ENCRYPTED_KEY\\DOY4mqbLKmJddIgZAFa7XC6xA5CgoR+qbMBnqVbXe0nXhATQvTquCd20RkPEdTZnhIwGzuwfKTYEEZ4BPUU9gQ==\\ OR " +
+                                "\\\\ENCRYPTED_KEY\\z21ae9N4XDQoCrm9izMHhaqymOeO5QqAw6zWNOf6WQD7JeIARTL/4Wb61/e4ounjgmVSTiTiYDMtkL2DFL0EYQ==\\ OR " +
+                                "\\\\ENCRYPTED_KEY\\krq1JIHHxOFTtSDBD+/Pp/oCwdoZTagXVmPALa1sWbcnT41tk+Z8ArMxPhmziApHuZdN5rjRrh0yx/ssGFEcxA==\\ OR " +
+                                "\\\\ENCRYPTED_KEY\\DbGP6YceFIY41xkGyU7Hy6niqAM1cAB/Y7UXdOzoLILQ0/j8a29vEOfTgHDOblqPiNxTZr3+TvvryNb5jguRng==\\ OR " +
+                                "\\\\ENCRYPTED_KEY\\v87vfugI4D97WGW81+bKWQotlJRsKm9hE37MvSIppmfij6+kirlnOn7PnzgGQIDEnNQingw8mPXt1xsI00SwcA==\\ OR " +
+                                "\\\\ENCRYPTED_KEY\\/uapHvgrqCMdUW39sP40ZhkWHsxFHTak8zAClTiwJ0WI83KrOPliq0gbPAFifvmHg8Bz7KH2uuxYloCCVNlYKw==\\ OR " +
+                                "\\\\ENCRYPTED_KEY\\Sw1TfXrnVyqp8yrN1VnrJGo34qI3QPlgob7sODHCx6/Zl3ouA2fIApzHSJmXaC8BRnBTSzAoD5Tyxto77ppvGQ==\\ OR " +
+                                "\\\\ENCRYPTED_KEY\\4V3ekfxiqXwOuRd3wPp9N9+p4cmN4xvGyH1SFXLORyrSsULokSlOQ6PD2SYhg5hIxJ6Zch8xKhMj2o1DmN5nJg==\\ OR " +
+                                "\\\\ENCRYPTED_KEY\\qFr3OwS38t4vOxII2k3Znq7CzHZO9Ywv+rbwdEbdJWPLJsYrn5v4d/n9lIYfU/Fx8a5RVOtuI/9BOyN0yiHM6A==\\ OR " +
+                                "\\\\ENCRYPTED_KEY\\MrvcG8Fw1jaWhV+oRmlUXDv1bGxcB9MWNqXzm7x7edtKqC8z4A6joj40iY7lQ4ltNv4WdafGmquDmJNLPT/9vw==\\ OR " +
+                                "\\\\ENCRYPTED_KEY\\ZHUl87v8Eq8uROiGZVxxEhZ3wdYlOlZN4q2hCoBBMeoB7Q/537pvWjrRbK0s34dq0CTU6TUXWPeA5s0AtWfSRw==\\ OR " +
+                                "\\\\ENCRYPTED_KEY\\/esXvxNOwfF+ykW9As/SoQqultRa5mD9ohPYmUIiRi1HMj9Gzc3jh/yJ0RlTp4m47cL96hyozT8gMQBwoYJd0A==\\ OR " +
+                                "\\\\ENCRYPTED_KEY\\tv+a8iveehOoUokmFH04TAzoTh2DLBc10WZkVrEL1O1lNhZ8ZZttjhSD3z0JY+E9cfriD+9sOJ1vEspK++xi5g==\\ OR " +
+                                "\\\\ENCRYPTED_KEY\\HXsDe2aFAmrSZaOufmkGxIvFYq0FvZ3UOZWVb6QHFK3C0ChF8loORsYDoLQPN5Tx+V79wxgrtTVdjbtfS8IsdQ==\\ OR " +
+                                "\\\\ENCRYPTED_KEY\\vtZoIlSlwbVUN8EfqlEIxK51Y870g6g8viYsXXkNjgD67/XzhhJrkoQkugVCEMUxGBxPjSuAKCejzzUzMofW6Q==\\ OR " +
+                                "\\\\ENCRYPTED_KEY\\tInHSBETc/DfD5kb3yR8E5oBTwJfh7Krds/YyZoCHI+fUl75oV+ex2TIdKC3E9SPk6n485hdkTFVtYnj+uil0g==\\ OR " +
+                                "\\\\ENCRYPTED_KEY\\riz59ciRBLaamnrATesMdFFmwuX9OxrTdfqcPvVp4dhJj89Q8mISZf5cWLQqcpJFSuMI+sd2CoTOLY7wjmwstA==\\ OR " +
+                                "\\\\ENCRYPTED_KEY\\hfyDzlGQWuVuv9TBrdRSmtVSqeW1wvPU1lu/iuGCvxY2e5Vlrd3qxZRvGZ17wlNRfwKW+EWb66dxW4iXJvLSHg==\\ OR " +
+                                "\\\\ENCRYPTED_KEY\\njjht9UkJibOvreXaW3JyJElvgzM0wyl+JdtalwHriLZnTbkFA8ne4olZGsEHd+e4GeebNTaXyKa0z0sf/BlxA==\\ OR " +
+                                "\\\\ENCRYPTED_KEY\\YDEtvcSnwKPATK9nzTcqZ+5C2zSqS92PjLzigfAh5QqTWYXR4MLuEDAyAdfjrQbc04v4Rp9ZhoLbETCg0rCAZA==\\ OR " +
+                                "\\\\ENCRYPTED_KEY\\u9Ipaky0unaHFPfsZtGOjFKYoGbuEylqtbiiZm1SRsGWFrhToI58k7nACZOd41gCEoTClKXESP76Ay15vKDdHg==\\ OR " +
+                                "\\\\ENCRYPTED_KEY\\plBiRGaiqvoSmIIBVYizbAga12e8S/t3BBxpNRDsytfZynX1LfkyDywjlGydfBAQM1pyLBfSWbIAw4iOfFQSrA==\\ OR " +
+                                "\\\\ENCRYPTED_KEY\\M0XMSTEg2EiRD12Ttk9bUU5Jl5ro0EZtX7DR7M+cfT8K1B/R3uMoqCM9gq94JQu/6fh//8h+/Bapo+pLQtjJEw==\\ OR " +
+                                "\\\\ENCRYPTED_KEY\\uf3fFf4TDrCvWVdD4KAVWDRFGXHMNT5QqY4tkMXjzITEvXKO49tfPIrXrL6YrNJdYQhDKsK1h8EiQ6HQlBwEnQ==\\ OR " +
+                                "\\\\ENCRYPTED_KEY\\mvpLCkyUNUgI/ib1/Az9c0sJX2OYCpYo/n2bymRUUgyc/4QeaNa+2LKaT9Ksx4zDKqdHa8H6Rv3laj0HdSXbBg==\\ OR " +
+                                "\\\\ENCRYPTED_KEY\\hN1QLRdgrfcpJY1nBSi3RE8jw9JDCLuV/RCqTqtAw0eAxG8kQlFWMrCLA7cPi2+so7ZEnW4aaUJt+L7M8gYSYw==\\ OR " +
+                                "\\\\ENCRYPTED_KEY\\NZZ0GEeA7u1UMaZcjXYkwuaknBW8wvyojQ7D+CSVj6ef/2k+X1MihVM3CDMCZwvpNe10qpofhtvaSlIPY/3rRA==\\";
+
+            default:
+                return null;
+        }
+    }
+
     private static String getQueryUseCase(int nb) {
         switch (nb) {
 
-            case 100: // use-case medco-normal
+            case 100: // use-case medco-normal test
                 return
-                        "\\\\CLINICAL_NON_SENSITIVE\\medco\\clinical\\nonsensitive\\GENDER\\Male\\ OR " +
-                        "\\\\CLINICAL_NON_SENSITIVE\\medco\\clinical\\nonsensitive\\GENDER\\Female\\" +
+                        "\\\\NON_SENSITIVE_CLEAR\\medco\\clinical\\nonsensitive\\GENDER\\Male\\ OR " +
+                        "\\\\NON_SENSITIVE_CLEAR\\medco\\clinical\\nonsensitive\\GENDER\\Female\\" +
                         " AND " +
 
+                        //"\\\\SENSITIVE_TAGGED\\medco\\encrypted\\/98y5inj97O+26HXW8fJnbHDH0CCohmlCYNgMfgJ2mzufKVl8PBffruVGm1C05tqWxrXKPNF9AMghe8ELmNmzA==\\ AND " +
+                        //"\\\\SENSITIVE_TAGGED\\medco\\encrypted\\JgHLqZ3PHOHOVXdywB30ALXmx8V/1Eb6jWOQyZweXcOZNOyGy/nak4Ds4JWjdn3lkqqNVFRHDK/9RoHvEGl01A==\\";
                         "\\\\SENSITIVE_TAGGED\\medco\\encrypted\\/98y5inj97O+26HXW8fJnbHDH0CCohmlCYNgMfgJ2mzufKVl8PBffruVGm1C05tqWxrXKPNF9AMghe8ELmNmzA==\\";
 
-            case 1: // use-case 2 encrypted encrypted
+            case 101: // use-case 1 medco-normal encrypted
+                return
+                        // skin -> MEDCO_ENC:1	; cut melanoma: MEDCO_ENC:2
+                        "\\\\SENSITIVE_TAGGED\\medco\\encrypted\\ZJGanAVkwmYlFIA49fcj47udIoVzDNIGvnGL6C29dtlk/CEt2bqhFoe+fFQ35qiFnRZo6kice7GWm+A1y1IArA==\\" +
+                        " AND " +
+                        "\\\\SENSITIVE_TAGGED\\medco\\encrypted\\IF1ZzAX6xZnpPKBFCZGSriAXuY7PsKWbSkOnBwmDFj2lQZ3/wn+HmWcupHR0A7maSr4YJnGkyNXKnP3AvkpDwQ==\\" +
+                        " AND " +
+
+                        // variants ids for [Hugo_Symbol=BRAF AND Protein_Position=600/766]
+                        "\\\\SENSITIVE_TAGGED\\medco\\encrypted\\odaeRfdWL+IRaCcZp5NMUtCUT8NW4ldAlHLRMWBl4gsO5dmlQ0xfy2ORNFuSLygRRymF7ld9XM87o8/ewy9LaA==\\ OR " +
+                        "\\\\SENSITIVE_TAGGED\\medco\\encrypted\\ZsM3nNP0zGWEmbhUcWmJAb0PWtGMRWJwHGI4RjBRyCht3rZjGDJWu5XYhkh1z3eSUOAVY/jwrdopn/220I5jOg==\\ OR " +
+                        // 2 replacement variants for when the limit 50000 (desc sorted by concept_cd) are deleted
+                        //"\\\\SENSITIVE_TAGGED\\medco\\encrypted\\5MbgrJvcvJdHBWJ+zwpXC9bunSNqtpVhp3j9gHew2w5BaCm/WKjkkdw3zZi0c4Mv+kFL/KUcQrC/yBIDuTAD1w==\\ OR " +
+                        //"\\\\SENSITIVE_TAGGED\\medco\\encrypted\\o/ZiHbcXWC76DvuOD/3F+tKaD8jUTyZLVAE7ym1kWznwQr8XyYxg4v0KxKYPPws0tTtQpqpslfwh0KePDgfVZg==\\ OR " +
+                        "\\\\SENSITIVE_TAGGED\\medco\\encrypted\\Dwl+tH0TMDYWFQW5t2xJFQ6hADx7Z1R5U7stVTq68cpgGi8DfcP4Lo4/k7Cf0EwDmVrVMM1IPqVULT6dgDe9hQ==\\ OR " +
+                        "\\\\SENSITIVE_TAGGED\\medco\\encrypted\\9Ngkb24BbgSccB1zb2fHYV3zR2SOHZpamGrFYkwyUjlzyLVA83i0aLDnl+1lhCLVULbQFZaNXODV5iFr6pYXPg==\\";
+
+            case 102: // use-case 2 medco-normal encrypted
+                return
+                    // skin -> MEDCO_ENC:1	; cut melanoma: MEDCO_ENC:2
+                    "\\\\SENSITIVE_TAGGED\\medco\\encrypted\\ZJGanAVkwmYlFIA49fcj47udIoVzDNIGvnGL6C29dtlk/CEt2bqhFoe+fFQ35qiFnRZo6kice7GWm+A1y1IArA==\\" +
+                    " AND " +
+                    "\\\\SENSITIVE_TAGGED\\medco\\encrypted\\IF1ZzAX6xZnpPKBFCZGSriAXuY7PsKWbSkOnBwmDFj2lQZ3/wn+HmWcupHR0A7maSr4YJnGkyNXKnP3AvkpDwQ==\\" +
+                    " AND " +
+//["-7054948997223410688",
+// "-7054948998062267136",
+// "-7054968999892742144",
+// "-7054948999337337856",
+// "-7054948997064022784",
+// "-7054953138544961536",
+// "-7054948997064020736",
+// "-7054923607457132544",
+// "-7054904773018905600",
+// "-7054898625779855360",
+// "-7054948987408734208",
+// "-7054923379857424384",
+// "-7054917142457610240",
+// "-7054861692282335232",
+// "-7054948050082458624",
+// "-7054922546600210432",
+// "-7054949048695910400",
+// "-7054923381098933248",
+// "-7054861517262417920",
+// "-7054918645662608384",
+// "-7054905185268658176",
+// "-7054904954414166016",
+// "-7054898626853597184",
+// "-7054904932905773056",
+// "-7054861823278837760"]}
+                    // variants ids for [Hugo_Symbol=BRAF AND (PTEN OR CDKN2A OR MAP2K1 OR MAP2K2)]
+                    "\\\\SENSITIVE_TAGGED\\medco\\encrypted\\PLAnpWTz8C92IPKXf7vFNQVeBWUP6bH7XbhDNAYfqhPoxZwY02SRRLFO2QEIxF2v3YtyHD4RoHO8mHrZ23Usdg==\\ OR " +
+                    "\\\\SENSITIVE_TAGGED\\medco\\encrypted\\ATWzLIq9+Q5P6foLqYK9UoUzWOuAzUZQz98WFER/cOS0rzVgD/fPLIg/R671gqm9+Ps1kGBgStRfSwSaYBIfhg==\\ OR " +
+                    "\\\\SENSITIVE_TAGGED\\medco\\encrypted\\WCC2LTY3Isd1hTL+USIcA4c8whnKY2aANdCipORs2Kh6XquUDXQXZFe5uX8JHgjG/rivMUS1FHR7p8m01RjPzw==\\ OR " +
+                    "\\\\SENSITIVE_TAGGED\\medco\\encrypted\\jutng4OJnR7wMheVo10DU8lR9LcISSmsYNc3vLE0anxV/Zp4qTgfOl+bHSeETh0KijSkgyOGcD54ANSukbIE1A==\\ OR " +
+                    "\\\\SENSITIVE_TAGGED\\medco\\encrypted\\zMA8yk0AfuxhOrce5a3xp8jD2hjLSqr8Wg39TCs+F1V4hKSdUUuAK/2eAH8yhpnyeZuuKugMa4v0Oylcgu27NA==\\ OR " +
+                    "\\\\SENSITIVE_TAGGED\\medco\\encrypted\\PDFvuwlzyliqi5EN+7oxR4Ty93sO9AjHAlXrslzhJC5n22LzypScZ2z4cB978VIfFbcJ3R9yMI1t9nJuAHYgPw==\\ OR " +
+                    "\\\\SENSITIVE_TAGGED\\medco\\encrypted\\Z6RWKoFkTps3QgnKGy7amEPligC06guuqZDgq4Bgb0++OzMBZxMx5a9QPQZwjQXyTwSwCO+BRQTGq0deCDWTPw==\\ OR " +
+                    "\\\\SENSITIVE_TAGGED\\medco\\encrypted\\Lh/mji7/cfSxo0ST1ghA9c/INwK0RnJgoScx8tA+bHfbUW4g86gVVTd8isCOQ42ZPCmMfesUdfEeTv+PQRpINA==\\ OR " +
+                    "\\\\SENSITIVE_TAGGED\\medco\\encrypted\\Lx+4gPhvFdvWi1zqurn+fIBW1qwoj2fJ1xuf/03Ia7gWGSWw2UX/6oiGryWPJUaTZ05hDoUx7OkbXuu7luA3wg==\\ OR " +
+                    "\\\\SENSITIVE_TAGGED\\medco\\encrypted\\XMhy6tn2jsRMA5Mnt9rGXpQOm3snvLarQ9sTfi9/Q4Jyt+qXCLPTMDNgDVYGvNg0vbS09O327PdenlHQo0Edrg==\\ OR " +
+                    "\\\\SENSITIVE_TAGGED\\medco\\encrypted\\oN7FF1vPVFFcxkKPXPYqZjNDmc2C6Re4PO0df9T8CyVghEpkiZD9Y/PL2rWzQ6cIeC53z3xtFFGdfSe/siic9A==\\ OR " +
+                    "\\\\SENSITIVE_TAGGED\\medco\\encrypted\\PEnbzWHipkx7TGO1l+TD2SxrYKOP+itkP1oUuyzNDJiKZRc1SAdFt98y+x6MWaL2RRhmDx66SDzGUK9QbURu5Q==\\ OR " +
+                    "\\\\SENSITIVE_TAGGED\\medco\\encrypted\\ldsIkxWoqmOF3CV4dwKkFXHnr2qtwoyCs627dRRn+pBgnSCGf97EbM6PY/pF6z6iDyGIFqemX3pXyGjrMFTLXA==\\ OR " +
+                    "\\\\SENSITIVE_TAGGED\\medco\\encrypted\\aydcWfgDG1tKTl411kaUbOs+lqzb03hoHujJ1g9Z5ysvHQPqPXoHeRqdI9BbAbwG40Wx5xHGFu8bOf9+J88Y0Q==\\ OR " +
+                    "\\\\SENSITIVE_TAGGED\\medco\\encrypted\\Nr7sqxGYcaxwaPpJl6DiedE2xZzSCWH1A9BB+J5BMVsVO4qdYENbAi7Si/BH1fyTkbEY9cIDmBZVuXoJAzqwVw==\\ OR " +
+                    "\\\\SENSITIVE_TAGGED\\medco\\encrypted\\gRfm7D5SGXJTjIiJOLFJiCnD9TQbYBb6+VdkTSVlEM3Qdaf4fR3pC4yE7KhdHtoJd3pQTeNeOC/QxzdZ+2ndug==\\ OR " +
+                    "\\\\SENSITIVE_TAGGED\\medco\\encrypted\\5/uO6PNye73N+AE4dD6Y/m5s+UuCx1xz/wOeX8n3vAEEURODb4aZTpkFiLAF6PpshkQdnHjYRT4aolbZaEm+Ug==\\ OR " +
+                    "\\\\SENSITIVE_TAGGED\\medco\\encrypted\\2bbFMyB9r/UVMVYFjurdp/qxdwZMnBDZHC33uMkHOdi61flyTNz4Ra6rgJjlCULSPHyxBBR/vHGzZQW6AKpx8w==\\ OR " +
+                    "\\\\SENSITIVE_TAGGED\\medco\\encrypted\\5MbgrJvcvJdHBWJ+zwpXC9bunSNqtpVhp3j9gHew2w5BaCm/WKjkkdw3zZi0c4Mv+kFL/KUcQrC/yBIDuTAD1w==\\ OR " +
+                    "\\\\SENSITIVE_TAGGED\\medco\\encrypted\\o/ZiHbcXWC76DvuOD/3F+tKaD8jUTyZLVAE7ym1kWznwQr8XyYxg4v0KxKYPPws0tTtQpqpslfwh0KePDgfVZg==\\ OR " +
+                    "\\\\SENSITIVE_TAGGED\\medco\\encrypted\\h5yUAXpNZv/FrqixPJEeh1TUM0S4CUYVAqkL/oCaC8VbDe35CHcKl9esPADZzzueywuSdrSKud90YJi+QjOn0w==\\ OR " +
+                    "\\\\SENSITIVE_TAGGED\\medco\\encrypted\\41QQR9gLvUDoeszN/cBu7+bx9JWiaJ5W064s6fBgUJpwpSwqAKVRrMO54D/PN2Gh6C8K7fk1ULUxSpJakchDGw==\\ OR " +
+                    "\\\\SENSITIVE_TAGGED\\medco\\encrypted\\4hhxdvZrPqGh16U+ExdXZy3pAK+uhwlNQhp8vBlH4ShBjpzk6Pxze/10kSC8YfgfcIAFaRWjGVmdOnD+aNPRqA==\\ OR " +
+                    "\\\\SENSITIVE_TAGGED\\medco\\encrypted\\mgpDqM/u1hQGXz8JcD2jmOTuXQ6s918K9Ws2nSBVjYmb4pAGZhEdzqF0uJYUU8Mf9SWHC58Q6V7BKVYTmWNQow==\\ OR " +
+                    "\\\\SENSITIVE_TAGGED\\medco\\encrypted\\fJBpEfSExkqebV25eyOwITyT20pIe4axMJBUzWz6AcIq6ZxUOJRCiBSRN7qQLg5WrKWjgu8EilLXMevC/s4mqA==\\" +
+                    " AND " +
+                    "\\\\SENSITIVE_TAGGED\\medco\\encrypted\\5QR7ELo5r8SBp42YTB24EmlXaUj2VfUYpmGVDdBVevmW9JFrBVVi8BbQvqNJpNVL3CITBgVXVD3mWOzt0xpB3w==\\ OR " +
+                    "\\\\SENSITIVE_TAGGED\\medco\\encrypted\\Peacr2BXY6auBK9TbfX0e/XvAAaGCO5AA2hFWw8vON0/uggBIqHCMcvYluzzFT45wnR7f53DC4R6uKwQIZu2qw==\\ OR " +
+                    "\\\\SENSITIVE_TAGGED\\medco\\encrypted\\ZBV/osNnmVcIHIef1Tb+BpB49C8AV39dKoULEHKOF/rRH1sZHpa3pmEWzhUkVhg5gzhwh7NnckiLuNvFf18xnA==\\ OR " +
+                    "\\\\SENSITIVE_TAGGED\\medco\\encrypted\\bRXoSlsmoaYseQ7l8Qzw0g9C7xN5OKSyekmHOOBH5M/gT/qFGxGI3IZjNxy8fD8il3t+HJBuGKyAqf4/JH1feg==\\ OR " +
+                    "\\\\SENSITIVE_TAGGED\\medco\\encrypted\\rCh4Vp63vQo1WRKUPtKU9POTRdL0lXk83rtajUcJiNJyBsh5PWkDcAgPR5yByxSL3yNRd2AhndAETBxCgrtKIw==\\ OR " +
+                    "\\\\SENSITIVE_TAGGED\\medco\\encrypted\\WkrM4sETE2n99Kyqj6UC33AoaJQmpr6vyzh0mSWhoSpUEZmJLR3Aq6ckmUvixQfL25F/3lvaDr46O9x3Mm4Mxg==\\ OR " +
+                    "\\\\SENSITIVE_TAGGED\\medco\\encrypted\\Gdiwb3+EyPrq62cILQtTcoKHeDmRLP5hsDN7pl3AoTCXaR7bMwI8NyTTa4BzhjNte9xqHlvokz6GzCgAFBXzsg==\\ OR " +
+                    "\\\\SENSITIVE_TAGGED\\medco\\encrypted\\vmk+wH+9PmrWFE7dMq1fJM88Ce2Y5e6v+D9P82aTsDG0mvqFxbFFLQ3kKyJUbYQyAWWr8aPZuCbW7vQ0MA0YHA==\\ OR " +
+                    "\\\\SENSITIVE_TAGGED\\medco\\encrypted\\TuIViS0nN83clzhVgmk8koAbcQVt496N9d9qrfX0rA9mWqoQ2vwRcHPxQYzrMPQTLabItwxKQmPX+mqniMBGtg==\\ OR " +
+                    "\\\\SENSITIVE_TAGGED\\medco\\encrypted\\pTsywvX60l8K9OB2/frNzOyOrpxKKTi1+J7YK9reMIPJAOR44p7z1e1OMGzddAKPceTVTkZCYd2+ex3pHVxt1g==\\ OR " +
+                    "\\\\SENSITIVE_TAGGED\\medco\\encrypted\\Dfb1fjwCOirZIDsPWZRl3p1TpHi7L0TOFXlDWKy3Mv7WT0YUC7Nu7t2WStbjec25UXeigMj84JW79bsm+sOGuQ==\\ OR " +
+                    "\\\\SENSITIVE_TAGGED\\medco\\encrypted\\3R5bDkQyG2TV7Ae+pElZS8T5yOdB4OPYyISMuhwj5VrWbq9C+1Ze6Dlda7giHp0MjzwzZDOrieA0deX9MNxhKQ==\\ OR " +
+                    "\\\\SENSITIVE_TAGGED\\medco\\encrypted\\rbP8hzF22hq1LC67qEZjQJ/zpTy8lC5UiKVvUuNQuNpDp1lZ1qAeSRNIVtmuYf0waNqxcpJgjl6TPV7Yviu4mA==\\ OR " +
+                    "\\\\SENSITIVE_TAGGED\\medco\\encrypted\\5oE2zWlMXT5Wh1G+yTXI0fmKKXdFQB3Yt7jm00KSsdj0mj3mDmsShMMcGaq9+8S+xEL1VyLzakxmp+LUKZ9svQ==\\ OR " +
+                    "\\\\SENSITIVE_TAGGED\\medco\\encrypted\\Q7C/6FtBqfqxBDgquat9juJyMK+1fa3hU4tsqGzovNMnitGyd0hGMH8kjHt0X2YEvhPZh83Gc91Oqc/kcu/U5Q==\\ OR " +
+                    "\\\\SENSITIVE_TAGGED\\medco\\encrypted\\JPLQkyVY2cmzM+ypf2qwieO3y0rr0bEUsJ05VV9xLFNSugPyXnb6dAU6E1OFA3tAU2+w2/MIYkBnQRYCKDKzTA==\\ OR " +
+                    "\\\\SENSITIVE_TAGGED\\medco\\encrypted\\4S/AKzCHAq9ak/ekP1RJqukzcnsu6gCLV+7O6yBUgCK554uBlwzrlbHMlm6T0NHS5jnugsOJswCD5jE17GoocA==\\ OR " +
+                    "\\\\SENSITIVE_TAGGED\\medco\\encrypted\\uhKHddj2VK8EXhS6EXX12ZKnpae8+OS+apj1b2XUUzl9oWh7BeGHThjduiDQkrED78Y8ybAqJG3SRPKi8UVo3Q==\\ OR " +
+                    "\\\\SENSITIVE_TAGGED\\medco\\encrypted\\cPoDXT719zMiNBZlhaadjYTzopzOlXA0gpYJU8Wak0GBfceBaB23teTlC6bIqCDhDo8eJfN9hAeXe3ofKmuBHA==\\ OR " +
+                    "\\\\SENSITIVE_TAGGED\\medco\\encrypted\\FLoHMX6nCBSflJOf8SRPZ0nnqgPQ76jZmWmcD7UFIc41Jpy2GDSX2O71T+iw+X0NBHBORAqwBmHcFADXCMgNdA==\\ OR " +
+                    "\\\\SENSITIVE_TAGGED\\medco\\encrypted\\WAcnqYvx9LJCBurqbvO1f+fQoBhTM9i0c15YTHuHGiVv33VwZC0WTCCuKokngEDPR0/VCvG9rQ+67WtfLkAsfQ==\\ OR " +
+                    "\\\\SENSITIVE_TAGGED\\medco\\encrypted\\UoFUOBelqpeswaM95OoXjJ0h/rPLzu9MBHMM19xUjAexQ/luRjdPQgTa4Huaq+qJx/O57i4O18G+baxHWz3bVA==\\ OR " +
+                    "\\\\SENSITIVE_TAGGED\\medco\\encrypted\\WKd1A4k9SunHNVeOjDTN16LlS6NpQuQTeE92tQBNp7SlOzvp+U3oyydtiuVMeinVHpxzy/rVD9YuT7UuVQoWqg==\\ OR " +
+                    "\\\\SENSITIVE_TAGGED\\medco\\encrypted\\+zY+CpTiWomTFYR5RKNjsD/jA1XeHuUCUzt1uS8VYWb3sqjj57uveI8FCGNoQjzjRo/uRsQ7tlsH6A7re0MeCg==\\ OR " +
+                    "\\\\SENSITIVE_TAGGED\\medco\\encrypted\\FUqk1EpQRVemkC2I6WFz6WbmkPNHNCv4LEN0suK/BkghU+r85CQqiK8qfJzhy2mLluR5v79xbKESEjU3ft+LzQ==\\ OR " +
+                    "\\\\SENSITIVE_TAGGED\\medco\\encrypted\\DOY4mqbLKmJddIgZAFa7XC6xA5CgoR+qbMBnqVbXe0nXhATQvTquCd20RkPEdTZnhIwGzuwfKTYEEZ4BPUU9gQ==\\ OR " +
+                    "\\\\SENSITIVE_TAGGED\\medco\\encrypted\\z21ae9N4XDQoCrm9izMHhaqymOeO5QqAw6zWNOf6WQD7JeIARTL/4Wb61/e4ounjgmVSTiTiYDMtkL2DFL0EYQ==\\ OR " +
+                    "\\\\SENSITIVE_TAGGED\\medco\\encrypted\\krq1JIHHxOFTtSDBD+/Pp/oCwdoZTagXVmPALa1sWbcnT41tk+Z8ArMxPhmziApHuZdN5rjRrh0yx/ssGFEcxA==\\ OR " +
+                    "\\\\SENSITIVE_TAGGED\\medco\\encrypted\\DbGP6YceFIY41xkGyU7Hy6niqAM1cAB/Y7UXdOzoLILQ0/j8a29vEOfTgHDOblqPiNxTZr3+TvvryNb5jguRng==\\ OR " +
+                    "\\\\SENSITIVE_TAGGED\\medco\\encrypted\\v87vfugI4D97WGW81+bKWQotlJRsKm9hE37MvSIppmfij6+kirlnOn7PnzgGQIDEnNQingw8mPXt1xsI00SwcA==\\ OR " +
+                    "\\\\SENSITIVE_TAGGED\\medco\\encrypted\\/uapHvgrqCMdUW39sP40ZhkWHsxFHTak8zAClTiwJ0WI83KrOPliq0gbPAFifvmHg8Bz7KH2uuxYloCCVNlYKw==\\ OR " +
+                    "\\\\SENSITIVE_TAGGED\\medco\\encrypted\\Sw1TfXrnVyqp8yrN1VnrJGo34qI3QPlgob7sODHCx6/Zl3ouA2fIApzHSJmXaC8BRnBTSzAoD5Tyxto77ppvGQ==\\ OR " +
+                    "\\\\SENSITIVE_TAGGED\\medco\\encrypted\\4V3ekfxiqXwOuRd3wPp9N9+p4cmN4xvGyH1SFXLORyrSsULokSlOQ6PD2SYhg5hIxJ6Zch8xKhMj2o1DmN5nJg==\\ OR " +
+                    "\\\\SENSITIVE_TAGGED\\medco\\encrypted\\qFr3OwS38t4vOxII2k3Znq7CzHZO9Ywv+rbwdEbdJWPLJsYrn5v4d/n9lIYfU/Fx8a5RVOtuI/9BOyN0yiHM6A==\\ OR " +
+                    "\\\\SENSITIVE_TAGGED\\medco\\encrypted\\MrvcG8Fw1jaWhV+oRmlUXDv1bGxcB9MWNqXzm7x7edtKqC8z4A6joj40iY7lQ4ltNv4WdafGmquDmJNLPT/9vw==\\ OR " +
+                    "\\\\SENSITIVE_TAGGED\\medco\\encrypted\\ZHUl87v8Eq8uROiGZVxxEhZ3wdYlOlZN4q2hCoBBMeoB7Q/537pvWjrRbK0s34dq0CTU6TUXWPeA5s0AtWfSRw==\\ OR " +
+                    "\\\\SENSITIVE_TAGGED\\medco\\encrypted\\/esXvxNOwfF+ykW9As/SoQqultRa5mD9ohPYmUIiRi1HMj9Gzc3jh/yJ0RlTp4m47cL96hyozT8gMQBwoYJd0A==\\ OR " +
+                    "\\\\SENSITIVE_TAGGED\\medco\\encrypted\\tv+a8iveehOoUokmFH04TAzoTh2DLBc10WZkVrEL1O1lNhZ8ZZttjhSD3z0JY+E9cfriD+9sOJ1vEspK++xi5g==\\ OR " +
+                    "\\\\SENSITIVE_TAGGED\\medco\\encrypted\\HXsDe2aFAmrSZaOufmkGxIvFYq0FvZ3UOZWVb6QHFK3C0ChF8loORsYDoLQPN5Tx+V79wxgrtTVdjbtfS8IsdQ==\\ OR " +
+                    "\\\\SENSITIVE_TAGGED\\medco\\encrypted\\vtZoIlSlwbVUN8EfqlEIxK51Y870g6g8viYsXXkNjgD67/XzhhJrkoQkugVCEMUxGBxPjSuAKCejzzUzMofW6Q==\\ OR " +
+                    "\\\\SENSITIVE_TAGGED\\medco\\encrypted\\tInHSBETc/DfD5kb3yR8E5oBTwJfh7Krds/YyZoCHI+fUl75oV+ex2TIdKC3E9SPk6n485hdkTFVtYnj+uil0g==\\ OR " +
+                    "\\\\SENSITIVE_TAGGED\\medco\\encrypted\\riz59ciRBLaamnrATesMdFFmwuX9OxrTdfqcPvVp4dhJj89Q8mISZf5cWLQqcpJFSuMI+sd2CoTOLY7wjmwstA==\\ OR " +
+                    "\\\\SENSITIVE_TAGGED\\medco\\encrypted\\hfyDzlGQWuVuv9TBrdRSmtVSqeW1wvPU1lu/iuGCvxY2e5Vlrd3qxZRvGZ17wlNRfwKW+EWb66dxW4iXJvLSHg==\\ OR " +
+                    "\\\\SENSITIVE_TAGGED\\medco\\encrypted\\njjht9UkJibOvreXaW3JyJElvgzM0wyl+JdtalwHriLZnTbkFA8ne4olZGsEHd+e4GeebNTaXyKa0z0sf/BlxA==\\ OR " +
+                    "\\\\SENSITIVE_TAGGED\\medco\\encrypted\\YDEtvcSnwKPATK9nzTcqZ+5C2zSqS92PjLzigfAh5QqTWYXR4MLuEDAyAdfjrQbc04v4Rp9ZhoLbETCg0rCAZA==\\ OR " +
+                    "\\\\SENSITIVE_TAGGED\\medco\\encrypted\\u9Ipaky0unaHFPfsZtGOjFKYoGbuEylqtbiiZm1SRsGWFrhToI58k7nACZOd41gCEoTClKXESP76Ay15vKDdHg==\\ OR " +
+                    "\\\\SENSITIVE_TAGGED\\medco\\encrypted\\plBiRGaiqvoSmIIBVYizbAga12e8S/t3BBxpNRDsytfZynX1LfkyDywjlGydfBAQM1pyLBfSWbIAw4iOfFQSrA==\\ OR " +
+                    "\\\\SENSITIVE_TAGGED\\medco\\encrypted\\M0XMSTEg2EiRD12Ttk9bUU5Jl5ro0EZtX7DR7M+cfT8K1B/R3uMoqCM9gq94JQu/6fh//8h+/Bapo+pLQtjJEw==\\ OR " +
+                    "\\\\SENSITIVE_TAGGED\\medco\\encrypted\\uf3fFf4TDrCvWVdD4KAVWDRFGXHMNT5QqY4tkMXjzITEvXKO49tfPIrXrL6YrNJdYQhDKsK1h8EiQ6HQlBwEnQ==\\ OR " +
+                    "\\\\SENSITIVE_TAGGED\\medco\\encrypted\\mvpLCkyUNUgI/ib1/Az9c0sJX2OYCpYo/n2bymRUUgyc/4QeaNa+2LKaT9Ksx4zDKqdHa8H6Rv3laj0HdSXbBg==\\ OR " +
+                    "\\\\SENSITIVE_TAGGED\\medco\\encrypted\\hN1QLRdgrfcpJY1nBSi3RE8jw9JDCLuV/RCqTqtAw0eAxG8kQlFWMrCLA7cPi2+so7ZEnW4aaUJt+L7M8gYSYw==\\ OR " +
+                    "\\\\SENSITIVE_TAGGED\\medco\\encrypted\\NZZ0GEeA7u1UMaZcjXYkwuaknBW8wvyojQ7D+CSVj6ef/2k+X1MihVM3CDMCZwvpNe10qpofhtvaSlIPY/3rRA==\\";
+
+            case 111: // use-case 1 medco-normal encrypted -- 10 nodes
+                return
+                        // skin -> MEDCO_ENC:1	; cut melanoma: MEDCO_ENC:2
+                        "\\\\SENSITIVE_TAGGED\\medco\\encrypted\\dJWUn8IJi2DJ5eYxdr82wLsXuxLd4tRv93Nw2Piu4X6LuSsIq0XQ5dOpOvStyvzxDitBmUhepno45yNYEQd+Ow==\\" +
+                        " AND " +
+                        "\\\\SENSITIVE_TAGGED\\medco\\encrypted\\CGsUVuAvWipLis00vna97BRtJ4r0TT0U3Mu3RgALGmoQTENbDHlGY4UgRkiDjSAINyjw2Mw/48InKf71nTshmA==\\" +
+                        " AND " +
+
+                        // variants ids for [Hugo_Symbol=BRAF AND Protein_Position=600/766]
+                        "\\\\SENSITIVE_TAGGED\\medco\\encrypted\\zAV8bTevHSOfvO5F4fE0iMZhyeVbX6YiLBncafB5sWWpSv5LPx0EYHC44jTnwF2sxGAMVoXieT4omqCb+9YYEA==\\ OR " +
+                        "\\\\SENSITIVE_TAGGED\\medco\\encrypted\\87Q2axk2L89m8hL64/7mSw07H4EVuC1eherFZRVv6IGjoCwiAqfQ0h1QDyhCIO4XO93bnSj2WjT4wgr8Uv2cNA==\\ OR " +
+                        "\\\\SENSITIVE_TAGGED\\medco\\encrypted\\37RmaqcFFYPCWKKpiN7A5J8bBi+OpzMJe2rAudzrw9NOzLckv+PsB8gtJGwJ35qdReOcXViStf0r1UAq27i6Rg==\\ OR " +
+                        "\\\\SENSITIVE_TAGGED\\medco\\encrypted\\QybSoEXh67GRdNSm03r2ajetO2y8Ui0PlXtpkdYpiLmRAAH8MJhjcieGrbEc7uyTpnyATv17LA0gFtSYJuu9wg==\\";
+
+            case 121: // use-case 1 medco-normal encrypted -- 9 nodes
+                return
+                        "\\\\SENSITIVE_TAGGED\\medco\\encrypted\\Pjma6l7y9rocVQPnMMDXaYqnYpbVK1bBNRpiQeh9EOPm3zeWkQ28poTrkN+whQlg6iFn7YQCk8R6QoNFqt89WQ==\\" +
+                        " AND " +
+                        "\\\\SENSITIVE_TAGGED\\medco\\encrypted\\wctPB0cCnCXhQ65NbWjVoh9ovtPXkbHvWnwKRJ5AUXmdrZnOSMJxzD/S5ACPZRa8VjTlgtJRB36pZHsh6M1j4w==\\" +
+                        " AND " +
+
+                        "\\\\SENSITIVE_TAGGED\\medco\\encrypted\\Hz6NctbmWWpJh69UG9n8KvVxjXnaC2IGPt5bDOOMTWQBtb6ZrWZBBpMg+8rxcJMCps8qYFJZkk5/M8tZv98wJA==\\ OR " +
+                        "\\\\SENSITIVE_TAGGED\\medco\\encrypted\\VsylQv5kHugpcRQl0jGPkM2HY07rtntwIsII19twG5Nj+nLdJCIBqI1oegugWrNoPehWOU37kSy9DlIHtof8vg==\\ OR " +
+                        "\\\\SENSITIVE_TAGGED\\medco\\encrypted\\Y7a1hHxcPvee+p1AmKsosmUHlrDKMr8KD3Bex7Xm2M/FLGDIXuiomkSMlZD16Mu2Qzv61YuEW5ZX9PjISiC8gQ==\\ OR " +
+                        "\\\\SENSITIVE_TAGGED\\medco\\encrypted\\wDR0uOCA1zSu/sTkiDBd8whh005juU0hvZ7SVoGeOOkX2He9+iKodhj7s2/6uiVVcOAFTuAQR+jDki0M1sPH7Q==\\";
+
+            case 131: //use-case 1 medco-normal encrypted -- 6 nodes
+                return
+                        "\\\\SENSITIVE_TAGGED\\medco\\encrypted\\N5A8mzhL8RMTtNTNZnkHIAgqxCK2DPoUqg+nbYWFBaZVoWex4a8TIlNFMVctrWFN10lVeo7u1vC1Duvls1H0MA==\\" +
+                        " AND " +
+                        "\\\\SENSITIVE_TAGGED\\medco\\encrypted\\3GzXHEmwnqtxdRP+A52E+knJFtc2OiHZhe4BiZWvJ6SJttrsvAwBbeoaTmUU6lIgkyG6K1NHzjjQ8yZHI+7sAA==\\" +
+                        " AND " +
+
+                        "\\\\SENSITIVE_TAGGED\\medco\\encrypted\\v6TCwh1okevHKd73WvCDyTbJeT1Z3GiiyB3LPoe86che9pl2McTS5s/jSAUR9nN1ZeqN50EpGKLHVEikldtS4g==\\ OR " +
+                        "\\\\SENSITIVE_TAGGED\\medco\\encrypted\\qxyNUzDp2JSeYCPlbLTyc1B4WanqdZQ5BIictOEeXtQooJl8RosP6t11SVU1pbK8PzTD5Nk7SkvkuOtacI+G2A==\\ OR " +
+                        "\\\\SENSITIVE_TAGGED\\medco\\encrypted\\zhKlBduQO4DtUee7HLHLs2Nd1NkRbEv872Ucm+93C2PthsEUCfyFpVoCZ1QDWm5gZTJaQKW1HTRYQKk3/YovwA==\\ OR " +
+                        "\\\\SENSITIVE_TAGGED\\medco\\encrypted\\jwP0jM3HMzEz9u+WlVJVwp8afMxUhWwn8vWXPHgx8oW4igbdey/uFb4dNsjXstPpp0K1T0hhNbD7n5HKP9YAAw==\\";
+
+            case 1105: // 5 query terms
+                StringWriter sw1105 = new StringWriter();
+                for (int i = 0 ; i < 4 ; i++) {
+                    sw1105.append("\\\\SENSITIVE_TAGGED\\medco\\encrypted\\uf3fFf4TDrCvWVdD4KAVWDRFGXHMNT5QqY4tkMXjzITEvXKO49tfPIrXrL6YrNJdYQhDKsK1h8EiQ6HQlBwEnQ==\\ OR ");
+                }
+                sw1105.append("\\\\SENSITIVE_TAGGED\\medco\\encrypted\\uf3fFf4TDrCvWVdD4KAVWDRFGXHMNT5QqY4tkMXjzITEvXKO49tfPIrXrL6YrNJdYQhDKsK1h8EiQ6HQlBwEnQ==\\");
+                return sw1105.toString();
+
+            case 1110: // 10 query terms
+                StringWriter sw11010 = new StringWriter();
+                for (int i = 0 ; i < 9 ; i++) {
+                    sw11010.append("\\\\SENSITIVE_TAGGED\\medco\\encrypted\\uf3fFf4TDrCvWVdD4KAVWDRFGXHMNT5QqY4tkMXjzITEvXKO49tfPIrXrL6YrNJdYQhDKsK1h8EiQ6HQlBwEnQ==\\ OR ");
+                }
+                sw11010.append("\\\\SENSITIVE_TAGGED\\medco\\encrypted\\uf3fFf4TDrCvWVdD4KAVWDRFGXHMNT5QqY4tkMXjzITEvXKO49tfPIrXrL6YrNJdYQhDKsK1h8EiQ6HQlBwEnQ==\\");
+                return sw11010.toString();
+
+            case 11100: // 100 query terms
+                StringWriter sw110100 = new StringWriter();
+                for (int i = 0 ; i < 99 ; i++) {
+                    sw110100.append("\\\\SENSITIVE_TAGGED\\medco\\encrypted\\uf3fFf4TDrCvWVdD4KAVWDRFGXHMNT5QqY4tkMXjzITEvXKO49tfPIrXrL6YrNJdYQhDKsK1h8EiQ6HQlBwEnQ==\\ OR ");
+                }
+                sw110100.append("\\\\SENSITIVE_TAGGED\\medco\\encrypted\\uf3fFf4TDrCvWVdD4KAVWDRFGXHMNT5QqY4tkMXjzITEvXKO49tfPIrXrL6YrNJdYQhDKsK1h8EiQ6HQlBwEnQ==\\");
+                return sw110100.toString();
+
+            case 11500: // 500 query terms
+                StringWriter sw11500 = new StringWriter();
+                for (int i = 0 ; i < 499 ; i++) {
+                    sw11500.append("\\\\SENSITIVE_TAGGED\\medco\\encrypted\\uf3fFf4TDrCvWVdD4KAVWDRFGXHMNT5QqY4tkMXjzITEvXKO49tfPIrXrL6YrNJdYQhDKsK1h8EiQ6HQlBwEnQ==\\ OR ");
+                }
+                sw11500.append("\\\\SENSITIVE_TAGGED\\medco\\encrypted\\uf3fFf4TDrCvWVdD4KAVWDRFGXHMNT5QqY4tkMXjzITEvXKO49tfPIrXrL6YrNJdYQhDKsK1h8EiQ6HQlBwEnQ==\\");
+                return sw11500.toString();
+
+            case 1: // use-case 1 encrypted encrypted
                 return
                         // clear query terms to retrieve all dataset
                         "\\\\CLINICAL_NON_SENSITIVE\\medco\\clinical\\nonsensitive\\GENDER\\Male\\ OR " +

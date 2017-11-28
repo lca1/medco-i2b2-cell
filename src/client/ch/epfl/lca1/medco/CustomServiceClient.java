@@ -10,16 +10,34 @@ import org.apache.axis2.Constants;
 import org.apache.axis2.addressing.EndpointReference;
 import org.apache.axis2.client.Options;
 import org.apache.axis2.context.ServiceContext;
+
+import org.apache.axis2.java.security.SSLProtocolSocketFactory;
+import org.apache.axis2.java.security.TrustAllTrustManager;
 import org.apache.axis2.transport.http.HTTPConstants;
 import org.apache.commons.httpclient.HostConfiguration;
 import org.apache.commons.httpclient.HttpClient;
 import org.apache.commons.httpclient.MultiThreadedHttpConnectionManager;
+import org.apache.commons.httpclient.protocol.Protocol;
+import org.apache.commons.httpclient.protocol.ProtocolSocketFactory;
+
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.TrustManager;
+import java.security.Security;
 
 /**
  * Created by misbach on 22.07.17.
  */
 public class CustomServiceClient extends ServiceClient {
 
+    /**
+     * Custom high timeout
+     * all certificates accepted!!!! (to be used only in client for dev!!)
+     *
+     * @param restEPR
+     * @param request
+     * @return
+     * @throws Exception
+     */
     public static String sendRESTCustomTimeout(String restEPR, OMElement request) throws Exception{
 
         String response = null;
@@ -27,7 +45,6 @@ public class CustomServiceClient extends ServiceClient {
         try {
 
             serviceClient = new org.apache.axis2.client.ServiceClient();
-
 
             ServiceContext context = serviceClient.getServiceContext();
             MultiThreadedHttpConnectionManager connManager = (MultiThreadedHttpConnectionManager)context.getProperty(HTTPConstants.MULTITHREAD_HTTP_CONNECTION_MANAGER);
@@ -50,6 +67,13 @@ public class CustomServiceClient extends ServiceClient {
             options.setProperty(HTTPConstants.SO_TIMEOUT, 6000000);
             options.setProperty(HTTPConstants.CONNECTION_TIMEOUT, 6000000);
             options.setTimeOutInMilliSeconds(6000000L);
+
+            // options to accept all certificates
+            SSLContext sslCtx = SSLContext.getInstance("ssl");
+            sslCtx.init(null, new TrustManager[] {new TrustAllTrustManager()}, null);
+            options.setProperty(HTTPConstants.CUSTOM_PROTOCOL_HANDLER,
+                    new Protocol("https",(ProtocolSocketFactory)new SSLProtocolSocketFactory(sslCtx),443));
+
 
             serviceClient.setOptions(options);
 

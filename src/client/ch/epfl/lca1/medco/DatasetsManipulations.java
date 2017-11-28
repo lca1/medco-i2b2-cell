@@ -8,9 +8,7 @@ import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 import org.postgresql.ds.PGSimpleDataSource;
 
-import java.io.FileReader;
-import java.io.FileWriter;
-import java.io.IOException;
+import java.io.*;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -243,7 +241,7 @@ public class DatasetsManipulations {
         // hugo symbol = braf
 
         loadSrv1Conf();
-        Logger.getRootLogger().setLevel(Level.OFF);
+        Logger.getRootLogger().setLevel(Level.DEBUG);
 
         String genomicFilePath = "/home/misbach/repositories/i2b2-core-server-medco/ch.epfl.lca1.medco/testfiles/datasets/full/skcm_broad/data_mutations_extended_skcm_broad.txt";
 
@@ -328,21 +326,20 @@ public class DatasetsManipulations {
 
         // gen queries encrypted
         System.out.println("--- use case 1 ---\n");
-        System.out.print("MEDCO_ENC:" + encrypt.encryptInt(4) + " AND "); // val 4
-        System.out.println("MEDCO_ENC:" + encrypt.encryptInt(6) + " AND "); // val 6
+        System.out.print("MEDCO_ENC:" + encrypt.encryptInt(1) + " AND "); // val
+        System.out.println("MEDCO_ENC:" + encrypt.encryptInt(2) + " AND "); // val
         for (Long encId : clearQueryVariantsUseCase1) {
             System.out.println("MEDCO_GEN:" + encrypt.encryptInt(encId) + " OR ");
         }
 
         System.out.println("\n\n\n--- use case 2 ---\n");
-        System.out.print("MEDCO_ENC:" + encrypt.encryptInt(4) + " AND "); // val 4
-        System.out.println("MEDCO_ENC:" + encrypt.encryptInt(6) + " AND "); // val 6
+        System.out.print(" -- clinical reminder ");
         for (Long encId : clearQueryVariantsUseCase2Braf) {
-            System.out.println("MEDCO_GEN:" + encrypt.encryptInt(encId) + " OR ");
+            System.out.println("\\\\SENSITIVE_TAGGED\\medco\\encrypted\\" + encrypt.encryptInt(encId) + "\\ OR ");
         }
         System.out.println(" AND ");
         for (Long encId : clearQueryVariantsUseCase2Others) {
-            System.out.println("MEDCO_GEN:" + encrypt.encryptInt(encId) + " OR ");
+            System.out.println("\\\\SENSITIVE_TAGGED\\medco\\encrypted\\" + encrypt.encryptInt(encId) + "\\ OR ");
         }
 
         // gen queries clear
@@ -451,32 +448,42 @@ public class DatasetsManipulations {
 
     public static void splitting() throws IOException {
         String clinicalFilePath = "/home/misbach/repositories/i2b2-core-server-medco/ch.epfl.lca1.medco/testfiles/datasets/full/skcm_broad/data_clinical_skcm_broad.txt",
-                genomicFilePath = "/home/misbach/repositories/i2b2-core-server-medco/ch.epfl.lca1.medco/testfiles/datasets/full/skcm_broad/data_mutations_extended_skcm_broad_clear_i2b2.txt";
+                genomicFilePath = "/home/misbach/repositories/i2b2-core-server-medco/ch.epfl.lca1.medco/testfiles/datasets/full/skcm_broad/data_mutations_extended_skcm_broad.txt";
+
+        FileOutputStream
+                os11 = new FileOutputStream("/home/misbach/repositories/i2b2-core-server-medco/ch.epfl.lca1.medco/testfiles/datasets/full/skcm_broad/data_clinical_skcm_broad_clear_i2b2_part1_encodingOK.txt"),
+                os12 = new FileOutputStream("/home/misbach/repositories/i2b2-core-server-medco/ch.epfl.lca1.medco/testfiles/datasets/full/skcm_broad/data_clinical_skcm_broad_clear_i2b2_part2_encodingOK.txt"),
+                os13 = new FileOutputStream("/home/misbach/repositories/i2b2-core-server-medco/ch.epfl.lca1.medco/testfiles/datasets/full/skcm_broad/data_clinical_skcm_broad_clear_i2b2_part3_encodingOK.txt"),
+                os21 = new FileOutputStream("/home/misbach/repositories/i2b2-core-server-medco/ch.epfl.lca1.medco/testfiles/datasets/full/skcm_broad/data_mutations_extended_skcm_broad_clear_i2b2_part1_encodingOK.txt"),
+                os22 = new FileOutputStream("/home/misbach/repositories/i2b2-core-server-medco/ch.epfl.lca1.medco/testfiles/datasets/full/skcm_broad/data_mutations_extended_skcm_broad_clear_i2b2_part2_encodingOK.txt"),
+                os23 = new FileOutputStream("/home/misbach/repositories/i2b2-core-server-medco/ch.epfl.lca1.medco/testfiles/datasets/full/skcm_broad/data_mutations_extended_skcm_broad_clear_i2b2_part3_encodingOK.txt");
 
         CSVWriter[] clinicalWriters = new CSVWriter[]{
-                new CSVWriter(new FileWriter("/home/misbach/repositories/i2b2-core-server-medco/ch.epfl.lca1.medco/testfiles/datasets/full/skcm_broad/data_clinical_skcm_broad_clear_i2b2_part1.txt"),
-                        '\t', '\u0000'),
-                new CSVWriter(new FileWriter("/home/misbach/repositories/i2b2-core-server-medco/ch.epfl.lca1.medco/testfiles/datasets/full/skcm_broad/data_clinical_skcm_broad_clear_i2b2_part2.txt"),
-                        '\t', '\u0000'),
-                new CSVWriter(new FileWriter("/home/misbach/repositories/i2b2-core-server-medco/ch.epfl.lca1.medco/testfiles/datasets/full/skcm_broad/data_clinical_skcm_broad_clear_i2b2_part3.txt"),
-                        '\t', '\u0000'),
+                new CSVWriter(new OutputStreamWriter(os11, "UTF-8"),
+                        '\t', CSVWriter.DEFAULT_QUOTE_CHARACTER, CSVWriter.RFC4180_LINE_END),
+                new CSVWriter(new OutputStreamWriter(os12, "UTF-8"),
+                        '\t', CSVWriter.DEFAULT_QUOTE_CHARACTER, CSVWriter.RFC4180_LINE_END),
+                new CSVWriter(new OutputStreamWriter(os13, "UTF-8"),
+                        '\t', CSVWriter.DEFAULT_QUOTE_CHARACTER, CSVWriter.RFC4180_LINE_END),
         };
         CSVWriter[] genomicWriters = new CSVWriter[]{
-                new CSVWriter(new FileWriter("/home/misbach/repositories/i2b2-core-server-medco/ch.epfl.lca1.medco/testfiles/datasets/full/skcm_broad/data_mutations_extended_skcm_broad_clear_i2b2_part1.txt"),
-                        '\t', '\u0000'),
-                new CSVWriter(new FileWriter("/home/misbach/repositories/i2b2-core-server-medco/ch.epfl.lca1.medco/testfiles/datasets/full/skcm_broad/data_mutations_extended_skcm_broad_clear_i2b2_part2.txt"),
-                        '\t', '\u0000'),
-                new CSVWriter(new FileWriter("/home/misbach/repositories/i2b2-core-server-medco/ch.epfl.lca1.medco/testfiles/datasets/full/skcm_broad/data_mutations_extended_skcm_broad_clear_i2b2_part3.txt"),
-                        '\t', '\u0000'),
+                new CSVWriter(new OutputStreamWriter(os21, "UTF-8"),
+                        '\t', CSVWriter.DEFAULT_QUOTE_CHARACTER, CSVWriter.RFC4180_LINE_END),
+                new CSVWriter(new OutputStreamWriter(os22, "UTF-8"),
+                        '\t', CSVWriter.DEFAULT_QUOTE_CHARACTER, CSVWriter.RFC4180_LINE_END),
+                new CSVWriter(new OutputStreamWriter(os23, "UTF-8"),
+                        '\t', CSVWriter.DEFAULT_QUOTE_CHARACTER, CSVWriter.RFC4180_LINE_END),
         };
 
-        CSVReader clinicalReader = new CSVReader(new FileReader(clinicalFilePath), '\t', '\u0000', 5);
+
+
+        CSVReader clinicalReader = new CSVReader(new InputStreamReader(new FileInputStream(clinicalFilePath), "ISO-8859-1"), '\t', '\u0000', 5);
         String[] clinicalHeader = clinicalReader.readNext();
         clinicalWriters[0].writeNext(clinicalHeader);
         clinicalWriters[1].writeNext(clinicalHeader);
         clinicalWriters[2].writeNext(clinicalHeader);
 
-        CSVReader genomicReader = new CSVReader(new FileReader(genomicFilePath), '\t', '\u0000', 0);
+        CSVReader genomicReader = new CSVReader(new InputStreamReader(new FileInputStream(genomicFilePath), "ISO-8859-1"), '\t', '\u0000', 1);
         String[] genomicHeader = genomicReader.readNext();
         genomicWriters[0].writeNext(genomicHeader);
         genomicWriters[1].writeNext(genomicHeader);
@@ -510,7 +517,7 @@ public class DatasetsManipulations {
                 sampleIdsSets[1].size() + " - " + sampleIdsSets[2].size());
 
         // read genomic file
-        int sampleIdIdx = 0; //15 for skcm broad originial, 2 for generated clear i2b2 dataset
+        int sampleIdIdx = 15; //15 for skcm broad originial, 2 for generated clear i2b2 dataset
         String[] genomicEntry;
         int genomicCount = 0;
         while ( (genomicEntry = genomicReader.readNext()) != null) {
@@ -548,9 +555,9 @@ public class DatasetsManipulations {
         MedCoUtil.getTestInstance().setProperty(MedCoUtil.I2B2CELLS_WS_WAITTIME_PROPERTIES,
                 "180000");
 
-        MedCoUtil.getTestInstance().setProperty(MedCoUtil.UNLYNX_BINARY_PATH_PROPERTIES, "unlynxI2b2"); // assumed in bin path
+        MedCoUtil.getTestInstance().setProperty(MedCoUtil.UNLYNX_BINARY_PATH_PROPERTIES, "i2b2"); // assumed in bin path
         MedCoUtil.getTestInstance().setProperty(MedCoUtil.UNLYNX_GROUP_FILE_PATH_PROPERTIES,
-                "/home/misbach/repositories/medco-deployment/configuration/keys/dev-3nodes-samehost/group.toml");
+                "/home/misbach/repositories/medco-deployment/configuration-profiles/exp-3nodes-icclusters/group.toml");
 
         MedCoUtil.getTestInstance().setProperty(MedCoUtil.UNLYNX_DEBUG_LEVEL_PROPERTIES, "5");
         MedCoUtil.getTestInstance().setProperty(MedCoUtil.UNLYNX_PROOFS_PROPERTIES, "0");
