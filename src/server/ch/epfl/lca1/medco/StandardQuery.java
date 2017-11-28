@@ -21,7 +21,6 @@ import ch.epfl.lca1.medco.util.Timers;
 import ch.epfl.lca1.medco.util.exceptions.MedCoError;
 import ch.epfl.lca1.medco.util.exceptions.MedCoException;
 import edu.harvard.i2b2.common.exception.I2B2Exception;
-import edu.harvard.i2b2.common.util.jaxb.JAXBUtilException;
 import edu.harvard.i2b2.crc.datavo.setfinder.query.PanelType;
 import edu.harvard.i2b2.crc.datavo.setfinder.query.QueryDefinitionType;
 import org.javatuples.Pair;
@@ -49,6 +48,7 @@ public class StandardQuery {
     private I2B2CRCCell crcCell;
     private I2B2PMCell pmCell;
     private UnlynxClient unlynxClient;
+    private Timers timers;
 
 
 
@@ -61,6 +61,7 @@ public class StandardQuery {
 		unlynxClient = new UnlynxClient(unlynxBinPath, unlynxGroupFilePath, unlynxDebugLevel, unlynxEntryPointIdx, unlynxProofsFlag, unlynxTimeoutSeconds);
 		crcCell = new I2B2CRCCell(crcCellUrl, queryRequest.getMessageHeader());
 		pmCell = new I2B2PMCell(pmCellUrl, queryRequest.getMessageHeader());
+		timers = new Timers();
 	}
 	
 	/**
@@ -71,13 +72,13 @@ public class StandardQuery {
      * @throws I2B2Exception
 	 */
 	public I2B2QueryResponse executeQuery() throws MedCoException, I2B2Exception {
-	    Timers.resetTimers();
-	    Timers.get("overall").start();
+	    timers.resetTimers();
+	    timers.get("overall").start();
 
 	    // get user information (auth., privacy budget, authorizations, public key)
         // todo: get and check budget query / user
         // todo: get user permissions
-        Timers.get("steps").start("User information retrieval");
+        timers.get("steps").start("User information retrieval");
         UserInformation user = pmCell.getUserInformation(queryRequest.getMessageHeader());
         if (!user.isAuthenticated()) {
             Logger.warn("Authentication failed for user " + user.getUsername());
@@ -85,12 +86,12 @@ public class StandardQuery {
             return null;
         }
         QueryType queryType = QueryType.resolveUserPermission(user.getRoles());
-        Timers.get("steps").stop();
+        timers.get("steps").stop();
 
         // retrieve the encrypted query terms
-        Timers.get("steps").start("Query parsing/splitting");
+        timers.get("steps").start("Query parsing/splitting");
         List<String> encryptedQueryItems = getEncryptedQueryTerms();
-        Timers.get("steps").stop();
+        timers.get("steps").stop();
 
         // intercept test query from SHRINE and bypass unlynx
         if (encryptedQueryItems.contains(Constants.CONCEPT_NAME_TEST_FLAG)) {
@@ -100,29 +101,29 @@ public class StandardQuery {
         }
 
         // query unlynx to tag the query terms
-        Timers.get("steps").start("Query tagging");
+        timers.get("steps").start("Query tagging");
         List<String> taggedItems = unlynxClient.computeDistributedDetTags(queryRequest.getQueryName(), encryptedQueryItems);
-        Timers.addAdditionalTimes(unlynxClient.getLastTimingMeasurements());
-        Timers.get("steps").stop();
+        timers.addAdditionalTimes(unlynxClient.getLastTimingMeasurements());
+        timers.get("steps").stop();
 
         // replace the query terms, query i2b2 with the original clear query terms + the tagged ones
-        Timers.get("steps").start("i2b2 query");
+        timers.get("steps").start("i2b2 query");
         replaceEncryptedQueryTerms(taggedItems);
         queryRequest.setOutputTypes(new String[]{"PATIENTSET", "PATIENT_COUNT_XML"});
         I2B2QueryResponse i2b2Response = crcCell.queryRequest(queryRequest);
-        Timers.get("steps").stop();
+        timers.get("steps").stop();
 
         // retrieve the patient set, including the encrypted dummy flags
-        Timers.get("steps").start("i2b2 patient set retrieval");
+        timers.get("steps").start("i2b2 patient set retrieval");
         Pair<List<String>, List<String>> patientSet = crcCell.queryForPatientSet(i2b2Response.getPatientSetId(), true);
-        Timers.get("steps").stop();
+        timers.get("steps").stop();
 
         String aggResult;
         switch (queryType) {
 
             case AGGREGATED_PER_SITE:
                 aggResult = unlynxClient.aggregateData(queryRequest.getQueryName(), user.getUserPublicKey(), patientSet.getValue1());
-                Timers.addAdditionalTimes(unlynxClient.getLastTimingMeasurements());
+                timers.addAdditionalTimes(unlynxClient.getLastTimingMeasurements());
 
                 break;
 
@@ -134,8 +135,8 @@ public class StandardQuery {
         }
 
         i2b2Response.resetResultInstanceListToEncryptedCountOnly();
-        Timers.get("overall").stop();
-        i2b2Response.setQueryResults(user.getUserPublicKey(), aggResult, Timers.generateFullReport());
+        timers.get("overall").stop();
+        i2b2Response.setQueryResults(user.getUserPublicKey(), aggResult, timers.generateFullReport());
 
         Logger.info("MedCo query successful (" + queryRequest.getQueryName() + ").");
         return i2b2Response;

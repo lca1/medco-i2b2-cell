@@ -15,17 +15,22 @@ import java.util.Map;
  */
 public class Timers {
 
-    private static Map<String, StopWatch> timers = new HashMap<>();
-    private static List<String> additionalTimes = new ArrayList<>();
+    private Map<String, StopWatch> timers;
+    private List<String> additionalTimes;
 
-    public static StopWatch get(String stopWatchName) {
+    public Timers() {
+        timers = new HashMap<>();
+        additionalTimes = new ArrayList<>();
+    }
+
+    public StopWatch get(String stopWatchName) {
         if (!timers.containsKey(stopWatchName)) {
             timers.put(stopWatchName, new StopWatch(stopWatchName));
         }
         return timers.get(stopWatchName);
     }
 
-    public static void addAdditionalTimes(String times) {
+    public void addAdditionalTimes(String times) {
         if (times != null) {
             additionalTimes.add(times);
         }
@@ -36,7 +41,7 @@ public class Timers {
      *          time_ms ; etc
      * @return
      */
-    public static JsonObject generateFullReport() {
+    public JsonObject generateFullReport() {
         JsonObject times = Json.object();
 
         for (String timerName : timers.keySet()) {
@@ -56,7 +61,7 @@ public class Timers {
         return times;
     }
 
-    public static void resetTimers() {
+    public void resetTimers() {
         timers.clear();
         additionalTimes.clear();
     }
