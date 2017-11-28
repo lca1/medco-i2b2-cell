@@ -26,7 +26,6 @@ import edu.harvard.i2b2.crc.datavo.setfinder.query.PanelType;
 import edu.harvard.i2b2.crc.datavo.setfinder.query.QueryDefinitionType;
 import org.javatuples.Pair;
 
-import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
@@ -65,9 +64,11 @@ public class StandardQuery {
 	}
 	
 	/**
-	 * 
+	 * Implements the high-level step-by-step logic of the MedCo query.
+     *todo
 	 * @return the query answer in CRC XML format.
-	 * @throws JAXBUtilException 
+     * @throws MedCoException
+     * @throws I2B2Exception
 	 */
 	public I2B2QueryResponse executeQuery() throws MedCoException, I2B2Exception {
 	    Timers.resetTimers();
@@ -88,7 +89,7 @@ public class StandardQuery {
 
         // retrieve the encrypted query terms
         Timers.get("steps").start("Query parsing/splitting");
-        List<String> encryptedQueryItems = extractEncryptedQueryTerms();
+        List<String> encryptedQueryItems = getEncryptedQueryTerms();
         Timers.get("steps").stop();
 
         // intercept test query from SHRINE and bypass unlynx
@@ -107,7 +108,7 @@ public class StandardQuery {
         // replace the query terms, query i2b2 with the original clear query terms + the tagged ones
         Timers.get("steps").start("i2b2 query");
         replaceEncryptedQueryTerms(taggedItems);
-        overrideResultOutputTypes(new String[]{"PATIENTSET", "PATIENT_COUNT_XML"});
+        queryRequest.setOutputTypes(new String[]{"PATIENTSET", "PATIENT_COUNT_XML"});
         I2B2QueryResponse i2b2Response = crcCell.queryRequest(queryRequest);
         Timers.get("steps").stop();
 
@@ -143,66 +144,47 @@ public class StandardQuery {
 
 
     /**
-     * TODO
-     * No checks on panels are done (i.e. if they contain mixed query types or not)
+     * Replace within the queryRequest, in top-bottom order, the encrypted query terms with their tagged equivalent.
      *
-     * @param taggedItems
-     * @throws MedCoException
+     * @param taggedQueryTerms the tagged query terms to use for replacement.
      */
-    private void replaceEncryptedQueryTerms(List<String> taggedItems) throws MedCoException {
+    private void replaceEncryptedQueryTerms(List<String> taggedQueryTerms) {
         QueryDefinitionType qd = queryRequest.getQueryDefinition();
         int encTermCount = 0;
 
-        // iter on the panels
         for (int p = 0; p < qd.getPanel().size(); p++) {
             PanelType panel = qd.getPanel().get(p);
 
-            // iter on the items
             int nbItems = panel.getItem().size();
             for (int i = 0; i < nbItems; i++) {
 
                 // replace encrypted item with its tagged version
                 Matcher medcoKeyMatcher = Constants.REGEX_QUERY_KEY_ENC.matcher(panel.getItem().get(i).getItemKey());
                 if (medcoKeyMatcher.matches()) {
-                    panel.getItem().get(i).setItemKey(Constants.CONCEPT_PATH_TAGGED_PREFIX + taggedItems.get(encTermCount++) + "\\");
-                }
+                    Logger.debug("Replacing " + panel.getItem().get(i).getItemKey() + " by " + taggedQueryTerms.get(encTermCount) +
+                            " on (panel=" + p + ", item=" + i + ")" );
 
+                    panel.getItem().get(i).setItemKey(Constants.CONCEPT_PATH_TAGGED_PREFIX + taggedQueryTerms.get(encTermCount++) + "\\");
+                }
             }
         }
 
-        // check the provided taggedItems match the number of encrypted terms
-        if (encTermCount != taggedItems.size()) {
-            Logger.warn("Mismatch in provided number of tagged items (" + taggedItems.size() + ") and number of encrypted items in query (" + encTermCount + ")");
+        // check the provided taggedQueryTerms match the number of encrypted terms
+        if (encTermCount != taggedQueryTerms.size()) {
+            Logger.warn("Mismatch in provided number of tagged items (" + taggedQueryTerms.size() + ") and number of encrypted items in query (" + encTermCount + ")");
         }
     }
 
-    private void overrideResultOutputTypes(String[] outputTypes) throws MedCoException {
-        queryRequest.setOutputTypes(outputTypes);
-    }
-
     /**
-     * todo: to rewrite
-     * Extract from the i2b2 query the sensitive / encrypted items recognized by the prefix defined in {@link Constants}.
-     * Accepts only panels fully clear or encrypted, i.e. no mix is allowed.
-     * <p>
-     * The predicate, if returned, has the following format:
-     * (exists(v0, r) || exists(v1, r)) &amp;&amp; (exists(v2, r) || exists(v3, r)) &amp;&amp; exists(v4, r)
-     *
-     * @return the list of encrypted query terms and optionally the corresponding predicate
-     * @throws MedCoException if a panel contains mixed clear and encrypted query terms
+     * @return the list of encrypted terms from the queryRequest in top-bottom order.
      */
-    private List<String> extractEncryptedQueryTerms() throws MedCoException {
-        // todo: handle cases: only clear no encrypt / only encrypt no clear
-        // todo: must be modified if invertion implementation
-
+    private List<String> getEncryptedQueryTerms() {
         QueryDefinitionType qd = queryRequest.getQueryDefinition();
         List<String> extractedItems = new ArrayList<>();
 
-        // iter on the panels
         for (int p = 0; p < qd.getPanel().size(); p++) {
             PanelType panel = qd.getPanel().get(p);
 
-            // iter on the items
             int nbItems = panel.getItem().size();
             for (int i = 0; i < nbItems; i++) {
 
@@ -210,13 +192,12 @@ public class StandardQuery {
                 Matcher medcoKeyMatcher = Constants.REGEX_QUERY_KEY_ENC.matcher(panel.getItem().get(i).getItemKey());
                 if (medcoKeyMatcher.matches()) {
                     extractedItems.add(medcoKeyMatcher.group(1));
-                    Logger.debug("Extracted item " + extractedItems.get(extractedItems.size() - 1) + "; panel=" + p + ", item=" + i);
+                    Logger.debug("Returned item " + extractedItems.get(extractedItems.size() - 1) + "; panel=" + p + ", item=" + i);
                 }
             }
         }
 
-        Logger.info("Extracted " + extractedItems.size() + " encrypted query terms for query " + queryRequest.getQueryName());
+        Logger.info("Returned " + extractedItems.size() + " encrypted query terms for query " + queryRequest.getQueryName());
         return extractedItems;
     }
-
 }

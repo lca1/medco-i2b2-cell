@@ -21,7 +21,7 @@ public class PatientDataObject extends PatientDataType {
     private static edu.harvard.i2b2.crc.datavo.pdo.ObjectFactory pdoOF =
             new edu.harvard.i2b2.crc.datavo.pdo.ObjectFactory();
 
-    private static final String PROVIDERS_PATH = "\\medco\\institutions\\";
+    private static final String PROVIDERS_PATH = "\\medco\\institutions\\";//todo: in constants
 
     /**
      * Contains the pair of patient and sample ids.

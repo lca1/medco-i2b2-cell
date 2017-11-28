@@ -129,6 +129,10 @@ public class I2B2QueryRequest extends RequestMessageType {
             panelXml.setPanelNumber(++panelCount);
             panelXml.setPanelAccuracyScale(0);
 
+            PanelType.TotalItemOccurrences totalItem = querySetFinderOF.createPanelTypeTotalItemOccurrences();
+            totalItem.setValue(1);
+            panelXml.setTotalItemOccurrences(totalItem);
+
             for (String itemKey : panel) {
                 ItemType itemXml = querySetFinderOF.createItemType();
                 itemXml.setItemKey(itemKey);

@@ -62,10 +62,10 @@ public class MedCoQueryService {
 	private OMElement handleRequest(RequestType requestType, OMElement request) {
 
 		// get delegate coresponding to request
-		RequestHandlerDelegate requestHandlerDelegate = null;
+		MedCoQueryRequestDelegate delegate = null;
 		switch (requestType) {
 			case MEDCO_QUERY:
-				requestHandlerDelegate = new MedCoQueryRequestDelegate();
+				delegate = new MedCoQueryRequestDelegate();
 				break;
 			default:
 				throw new IllegalArgumentException("Illegal requestType");
@@ -74,7 +74,7 @@ public class MedCoQueryService {
 		// execute the delegate
 		OMElement returnElement = null;
 		try {
-			String response = requestHandlerDelegate.handleRequest(request.toString());
+			String response = delegate.handleRequest(request.toString());
 			Logger.debug("Response in service: " + response);
 
 			returnElement = buildOMElementFromString(response);

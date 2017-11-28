@@ -45,10 +45,6 @@ public class I2B2QueryResponse extends ResponseMessageType {
     private static edu.harvard.i2b2.crc.datavo.setfinder.query.ObjectFactory querySetFinderOF =
             new edu.harvard.i2b2.crc.datavo.setfinder.query.ObjectFactory();
 
-    // todo: centralize somewhere all hardcoded XML tags
-    private static final String JSON_RESULT_XML_TAG_START = "<json_results>",
-                                JSON_RESULT_XML_TAG_END = "</json_results>";
-
 
     public I2b2Status getI2b2Status() throws I2B2XMLException {
         return msgUtil.parseStatus(this);

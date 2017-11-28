@@ -33,7 +33,7 @@ import java.io.StringWriter;
  * @author rkuttan
  */
 // todo: no authentication done for now, implement!
-public class MedCoQueryRequestDelegate extends RequestHandlerDelegate {
+public class MedCoQueryRequestDelegate {
 	protected static edu.harvard.i2b2.crc.datavo.i2b2message.ObjectFactory i2b2OF =
 			new edu.harvard.i2b2.crc.datavo.i2b2message.ObjectFactory();
 
@@ -68,6 +68,7 @@ public class MedCoQueryRequestDelegate extends RequestHandlerDelegate {
                         medCoUtil.getI2b2Waittimems(), medCoUtil.getDataRepositoryCellUrl(), medCoUtil.getProjectManagementCellUrl());
                 int resultMode = 0;
                 int timeoutSeconds = MedCoUtil.getInstance().getI2b2Waittimems();//todo: from configuration add entry specific to unlynx
+                //todo: fetching things from the configuration should be done here only
 
                 queryAnswer = medcoQuery.executeQuery();
             }
