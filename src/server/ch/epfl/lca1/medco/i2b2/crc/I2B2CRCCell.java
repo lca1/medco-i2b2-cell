@@ -1,5 +1,6 @@
 package ch.epfl.lca1.medco.i2b2.crc;
 
+import ch.epfl.lca1.medco.i2b2.MessagesUtil;
 import ch.epfl.lca1.medco.util.Constants;
 import edu.harvard.i2b2.crc.datavo.i2b2message.BodyType;
 import edu.harvard.i2b2.crc.datavo.i2b2message.ResponseMessageType;
@@ -21,25 +22,45 @@ import org.javatuples.Pair;
 
 import java.util.*;
 
-// todo: harmonize error handling (i2b2status + exceptions)
+/**
+ * Represents an i2b2 CRC cell and provides methods to make request against it.
+ * A communication error will raise an exception, but if an error happens within the cell the error message will be
+ * encapsulated in the response message.
+ */
 public class I2B2CRCCell extends I2B2Cell {
+    // todo: harmonize error handling (i2b2status + exceptions)
 
+    /**
+     * URL path suffixes used for request against the CRC cell.
+     */
     private static final String URL_PATH_I2B2_PUBLISHDATAREQ = "/publishDataRequest",
                                 URL_PATH_I2B2_PDOREQ = "/pdorequest",
                                 URL_PATH_I2B2_REQ = "/request";
 
-    public I2B2CRCCell(String crcCellUrl , MedCoI2b2MessageHeader auth) {
-        super(crcCellUrl, auth); // get url
+    /**
+     * @param crcCellUrl the URL of the CRC cell, e.g. http://host:port/i2b2/QueryService
+     * @param header the header used to contact the CRC cell
+     */
+    public I2B2CRCCell(String crcCellUrl , MedCoI2b2MessageHeader header) {
+        super(crcCellUrl, header);
     }
 
-    public I2B2QueryResponse queryRequest(I2B2QueryRequest origRequest) throws I2B2Exception {
+    /**
+     * Make a query request against the CRC.
+     *
+     * @param request the query request
+     * @return the query response
+     *
+     * @throws I2B2Exception if a communication error occurs during the query.
+     */
+    public I2B2QueryResponse queryRequest(I2B2QueryRequest request) throws I2B2Exception {
 
         // make query request (from query definition) with a patient set result output
         I2B2QueryResponse parsedResp;
         try {
-            ResponseMessageType resp = requestToCell(URL_PATH_I2B2_REQ, origRequest);
+            ResponseMessageType resp = requestToCell(URL_PATH_I2B2_REQ, request);
             parsedResp = new I2B2QueryResponse(resp);
-            Logger.info("crc query request result: " + parsedResp.getI2b2Status());
+            Logger.info("CRC query request result: " + parsedResp.getI2b2Status());
 
         } catch (Exception e) {
             throw Logger.error(new I2B2Exception("Request failed.", e));
@@ -53,7 +74,8 @@ public class I2B2CRCCell extends I2B2Cell {
      * the corresponding patient set, includes the enc dummies
      *
      * @return list of ids + list of dummy flags
-     * @throws I2B2Exception
+     *
+     * @throws I2B2Exception if a communication error occurs during the query.
      */
     public Pair<List<String>, List<String>> queryForPatientSet(String patientSetId, boolean getDummyFlags) throws I2B2Exception {
 
@@ -95,6 +117,7 @@ public class I2B2CRCCell extends I2B2Cell {
     }
 
     /**
+     *
      * Error checking left for the caller
      * @param fileRepoLocationURI
      * @param providerId
@@ -170,7 +193,7 @@ public class I2B2CRCCell extends I2B2Cell {
             // error checking and handling completely left to the caller
             return new Pair<>(
                     resp.getValue0(),
-                    (LoadDataResponseType) msgUtil.getUnwrapHelper().getObjectByClass(
+                    (LoadDataResponseType) MessagesUtil.getUnwrapHelper().getObjectByClass(
                             resp.getValue1().getAny(), LoadDataResponseType.class));
 
         } catch (Exception e) {

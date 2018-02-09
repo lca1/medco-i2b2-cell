@@ -1,103 +1,66 @@
-/*
- * Copyright (c) 2006-2007 Massachusetts General Hospital
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the i2b2 Software License v1.0
- * which accompanies this distribution.
- *
- * Contributors:
- *     Rajesh Kuttan
- *     Wayne Chan
- */
 package ch.epfl.lca1.medco.axis2;
 
-import java.io.StringReader;
-
-import javax.xml.stream.XMLInputFactory;
-import javax.xml.stream.XMLStreamException;
-import javax.xml.stream.XMLStreamReader;
-
 import ch.epfl.lca1.medco.util.Logger;
-import org.apache.axiom.om.OMElement;
-import org.apache.axiom.om.impl.builder.StAXOMBuilder;
-
+import ch.epfl.lca1.medco.util.XMLUtil;
 import edu.harvard.i2b2.common.exception.I2B2Exception;
+import org.apache.axiom.om.OMElement;
 
 /**
- * <b>Axis2's service class<b>
+ * Apache Axis2 service class for MedCo.
+ * This is the entry point for any call to the MedCo cell.
  *
- * <p>
- * This class implements methods related to webservice operation.
- * <li>For example http://localhost:8080/axis2/services/crc/serfinderrequest
- * http://localhost:8080/axis2/services/crc/pdorequest
- *
- * $Id: QueryService.java,v 1.14 2009/09/10 19:32:06 rk903 Exp $
- *
- * @author rkuttan
-
+ * Defines the base URL: http://host:port/i2b2/MedCoQueryService/
  */
 public class MedCoQueryService {
+	// todo: what about URLs other than /request? --> may need to add here and in service file
 
-	/** enum to identify the request type **/
+	/**
+     * Identify the type of the incoming request.
+     */
 	private enum RequestType {MEDCO_QUERY}
 
 	/**
-	 * Webservice function to handle setfinder request
+	 * MedCo generic query request.
+     * Defines the URL: http://host:port/i2b2/MedCoQueryService/request
 	 *
-	 * @param omElement
-	 *            request message wrapped in OMElement
-	 * @return response message in wrapped inside OMElement
+	 * @param omElement Axis2-formatted request message
+	 * @return Axis2-formatted response message
 	 */
 	public OMElement request(OMElement omElement) {
-
-		OMElement response = handleRequest(RequestType.MEDCO_QUERY, omElement);
-
-		//StopWatch.overall.stop(); stopped just before generating reports
-		return response;
+		return handleRequest(RequestType.MEDCO_QUERY, omElement);
 	}
 
-
-	// --------------------------------------------
-	// Creates delegate based on the request type
-	// --------------------------------------------
+    /**
+     * Handle incoming request and execute the right deleguate to generate the response.
+     *
+     * @param requestType type of the request
+     * @param request the request
+     *
+     * @return the response
+     */
 	private OMElement handleRequest(RequestType requestType, OMElement request) {
 
-		// get delegate coresponding to request
-		MedCoQueryRequestDelegate delegate = null;
+	    // execute request code
+		MedCoQueryRequestDelegate delegate;
 		switch (requestType) {
 			case MEDCO_QUERY:
 				delegate = new MedCoQueryRequestDelegate();
 				break;
 			default:
-				throw new IllegalArgumentException("Illegal requestType");
+				throw Logger.error(new IllegalArgumentException("Illegal requestType"));
 		}
 
-		// execute the delegate
+		// encapsulate response
 		OMElement returnElement = null;
 		try {
 			String response = delegate.handleRequest(request.toString());
-			Logger.debug("Response in service: " + response);
+			Logger.debug("Generated response: " + response);
+			returnElement = XMLUtil.OMElementFromString(response);
 
-			returnElement = buildOMElementFromString(response);
-
-		} catch (Throwable e) {
+		} catch (I2B2Exception e) {
 		    Logger.error(e);
 		}
-		return returnElement;
-	}
 
-	/**
-	 * Function constructs OMElement for the given String
-	 *
-	 * @param xmlString
-	 * @return OMElement
-	 * @throws XMLStreamException
-	 */
-	private OMElement buildOMElementFromString(String xmlString) throws XMLStreamException {
-		XMLInputFactory xif = XMLInputFactory.newInstance();
-		StringReader strReader = new StringReader(xmlString);
-		XMLStreamReader reader = xif.createXMLStreamReader(strReader);
-		StAXOMBuilder builder = new StAXOMBuilder(reader);
-		OMElement element = builder.getDocumentElement();
-		return element;
+		return returnElement;
 	}
 }

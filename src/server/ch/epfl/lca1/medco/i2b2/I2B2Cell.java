@@ -15,7 +15,6 @@ import org.javatuples.Pair;
 
 /**
  * keep internal the translations string <> OMelement <> JAXB
- * TODO: check if it makes to refactor and have abstratec object to manipulate those // maybe a medco jaxbutil ?
  * @author misbach
  *
  */

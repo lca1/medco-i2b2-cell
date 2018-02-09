@@ -1,8 +1,7 @@
 package ch.epfl.lca1.medco.util.exceptions;
 
 /**
- * Application critical error thrown in case of an unrecoverable error.
- * Should not attempt to catch.
+ * Generic MedCo exception.
  */
 public class MedCoException extends Exception {
 

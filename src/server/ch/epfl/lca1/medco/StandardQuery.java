@@ -1,12 +1,3 @@
-/*
- * Copyright (c) 2006-2007 Massachusetts General Hospital
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the i2b2 Software License v1.0
- * which accompanies this distribution.
- *
- * Contributors:
- *     Rajesh Kuttan
- */
 package ch.epfl.lca1.medco;
 
 import ch.epfl.lca1.medco.i2b2.crc.I2B2CRCCell;
@@ -29,34 +20,55 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
 
-//
-
-//todo doc: https://github.com/chb/shrine/tree/master/doc
-
 /**
- * Represents a query to MedCo.
- * From the XML query (in CRC format), parse to extract the sensitive attributes, 
- * make query to CRC for non-sensitive attributes, get the patient set from CRC,
- * query the cothority with the patient sets and sensitive attributes and answer.
- *
- *
- * everything under that sohuld not use the config!!
+ * Implements the MedCo v0.1 query workflow from within the i2b2 hive.
  */
 public class StandardQuery {
+    // todo: make more generic the use of unlynx (as a cryptographic engine using specific protocols)
+    // todo: implement user authentication & authorization
+    // todo: implement differential privacy
 
+    /**
+     * The incoming query request, in i2b2 CRC format.
+     */
     private I2B2QueryRequest queryRequest;
+
+    /**
+     * Connection to the i2b2 CRC cell (data repository).
+     */
     private I2B2CRCCell crcCell;
+
+    /**
+     * Connection to the i2b2 PM cell (hive data and user management).
+     */
     private I2B2PMCell pmCell;
+
+    /**
+     * Connection to Unlynx (cryptographic engine).
+     */
     private UnlynxClient unlynxClient;
+
+    /**
+     * All the timers of the query.
+     */
     private Timers timers;
 
-
-
-    //int resultMode, String clientPubKey, long timoutSeconds
+    /**
+     *
+     * @param request the incoming query request to execute
+     * @param unlynxBinPath path to the Unlynx binary to call
+     * @param unlynxGroupFilePath public key of the Unlynx collective authority
+     * @param unlynxDebugLevel debug level to pass to Unlynx
+     * @param unlynxEntryPointIdx index (within the group file) of the collective authority node attached to the current instance
+     * @param unlynxProofsFlag flag for proof usage in Unlynx (dramatically decrease performances if true)
+     * @param unlynxTimeoutSeconds timeout value for Unlynx
+     * @param crcCellUrl URL of the i2b2 CRC cell
+     * @param pmCellUrl URL of the i2b2 PM cell
+     */
 	public StandardQuery(I2B2QueryRequest request,
                          String unlynxBinPath, String unlynxGroupFilePath, int unlynxDebugLevel, int unlynxEntryPointIdx,
                          int unlynxProofsFlag, long unlynxTimeoutSeconds,
-                         String crcCellUrl, String pmCellUrl) throws I2B2Exception {
+                         String crcCellUrl, String pmCellUrl) {
 		this.queryRequest = request;
 		unlynxClient = new UnlynxClient(unlynxBinPath, unlynxGroupFilePath, unlynxDebugLevel, unlynxEntryPointIdx, unlynxProofsFlag, unlynxTimeoutSeconds);
 		crcCell = new I2B2CRCCell(crcCellUrl, queryRequest.getMessageHeader());
@@ -66,10 +78,11 @@ public class StandardQuery {
 	
 	/**
 	 * Implements the high-level step-by-step logic of the MedCo query.
-     *todo
-	 * @return the query answer in CRC XML format.
-     * @throws MedCoException
-     * @throws I2B2Exception
+     *
+     * @return the query answer in CRC XML format, ready to send back to the requester
+     *
+     * @throws MedCoException if the query fails for a MedCo-specific reason
+     * @throws I2B2Exception if the query fails for an i2b2-specific reason
 	 */
 	public I2B2QueryResponse executeQuery() throws MedCoException, I2B2Exception {
 	    timers.resetTimers();
@@ -131,7 +144,6 @@ public class StandardQuery {
             case AGGREGATED_TOTAL:
             default:
                 throw new MedCoError("Query type not supported yet.");
-
         }
 
         i2b2Response.resetResultInstanceListToEncryptedCountOnly();
@@ -140,9 +152,7 @@ public class StandardQuery {
 
         Logger.info("MedCo query successful (" + queryRequest.getQueryName() + ").");
         return i2b2Response;
-		
 	}
-
 
     /**
      * Replace within the queryRequest, in top-bottom order, the encrypted query terms with their tagged equivalent.

@@ -1,10 +1,17 @@
 package ch.epfl.lca1.medco.util;
 
 import ch.epfl.lca1.medco.util.exceptions.I2B2XMLException;
+import edu.harvard.i2b2.common.exception.I2B2Exception;
+import org.apache.axiom.om.OMElement;
+import org.apache.axiom.om.impl.builder.StAXOMBuilder;
 
+import javax.xml.stream.XMLInputFactory;
+import javax.xml.stream.XMLStreamException;
+import javax.xml.stream.XMLStreamReader;
 import java.io.BufferedReader;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.StringReader;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
 
@@ -12,6 +19,11 @@ import java.util.NoSuchElementException;
  * Util class containing functions related to XML handling.
  */
 public class XMLUtil {
+
+    /**
+     * Prevent instantiation: static utility class.
+     */
+    private XMLUtil() { }
 
     public static final String[][] XML_CHARS_ESCAPES = {
             {"&", "&amp;"}, // must be first
@@ -94,5 +106,24 @@ public class XMLUtil {
             unEscapedVal = unEscapedVal.replace(XML_CHARS_ESCAPES[i][1], XML_CHARS_ESCAPES[i][0]);
         }
         return unEscapedVal;
+    }
+
+    /**
+     * Converts a XML String to an OMElement.
+     *
+     * @param xmlString the XML String to convert
+     * @return OMElement the converted XML String into OMElement
+     *
+     * @throws XMLStreamException
+     */
+    public static OMElement OMElementFromString(String xmlString) throws I2B2XMLException {
+        try {
+            StringReader strReader = new StringReader(xmlString);
+            XMLStreamReader reader = XMLInputFactory.newInstance().createXMLStreamReader(strReader);
+            StAXOMBuilder builder = new StAXOMBuilder(reader);
+            return builder.getDocumentElement();
+        } catch (XMLStreamException e) {
+            throw Logger.error(new I2B2XMLException("Failed to build OMElement from String", e));
+        }
     }
 }
