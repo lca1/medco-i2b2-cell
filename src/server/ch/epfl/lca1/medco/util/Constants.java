@@ -47,7 +47,7 @@ public class Constants {
      * todo: replace path encrypted / tagged
      */
     public static final Pattern REGEX_QUERY_KEY_ENC =
-            Pattern.compile("^\\s*\\\\\\\\" + CONCEPT_KEY_ENCRYPTED_FLAG + "\\\\([a-zA-Z0-9+/=]+)\\\\\\s*$");
+            Pattern.compile("^\\s*\\\\\\\\" + CONCEPT_KEY_ENCRYPTED_FLAG + "\\\\([a-zA-Z0-9+/=]+)(\\\\)?\\s*$");
 
 
     /**
