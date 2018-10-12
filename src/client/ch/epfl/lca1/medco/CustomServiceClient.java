@@ -69,10 +69,10 @@ public class CustomServiceClient extends ServiceClient {
             options.setTimeOutInMilliSeconds(6000000L);
 
             // options to accept all certificates
-            SSLContext sslCtx = SSLContext.getInstance("ssl");
-            sslCtx.init(null, new TrustManager[] {new TrustAllTrustManager()}, null);
-            options.setProperty(HTTPConstants.CUSTOM_PROTOCOL_HANDLER,
-                    new Protocol("https",(ProtocolSocketFactory)new SSLProtocolSocketFactory(sslCtx),443));
+//            SSLContext sslCtx = SSLContext.getInstance("ssl");
+//            sslCtx.init(null, new TrustManager[] {new TrustAllTrustManager()}, null);
+//            options.setProperty(HTTPConstants.CUSTOM_PROTOCOL_HANDLER,
+//                    new Protocol("https",(ProtocolSocketFactory)new SSLProtocolSocketFactory(sslCtx),443));
 
 
             serviceClient.setOptions(options);

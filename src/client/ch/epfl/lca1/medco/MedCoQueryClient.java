@@ -478,6 +478,12 @@ public class MedCoQueryClient {
     private static String getQueryUseCase(int nb) {
         switch (nb) {
 
+            case 400: // medco new loader test query
+                return "\\\\ENCRYPTED_KEY\\e3I9y05piZysUSS/cBOJHII/IF68Xwtb9JXXocjC127WSnWklDplOiGstRiuKapOYJTEWOmjoJD5NHhpUV6OAQ==\\";
+
+            case 401:
+                return "\\\\i2b2_DIAG\\i2b2\\Diagnoses\\Mental Disorders (290-319)\\Non-psychotic disorders (300-316)\\(309) Adjustment reaction\\(309-8) Other specified adjustmen~\\(309-81) Prolonged posttraumatic ~\\";
+
             case 100: // use-case medco-normal test
                 return
                         "\\\\NON_SENSITIVE_CLEAR\\medco\\clinical\\nonsensitive\\GENDER\\Male\\ OR " +
