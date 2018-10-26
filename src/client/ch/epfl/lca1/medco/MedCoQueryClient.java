@@ -479,7 +479,8 @@ public class MedCoQueryClient {
         switch (nb) {
 
             case 400: // medco new loader test query
-                return "\\\\ENCRYPTED_KEY\\e3I9y05piZysUSS/cBOJHII/IF68Xwtb9JXXocjC127WSnWklDplOiGstRiuKapOYJTEWOmjoJD5NHhpUV6OAQ==\\";
+                return "\\\\ENCRYPTED_KEY\\7lP3z3YbMbRkKldDK8v0ze1jxHRkT0BsjWwc0CFTcVd1HxNZrJMhEIb9R6Wu6afCxIYQ0dLa/7ni3XnWRzW9SQ==\\";
+                //return "\\\\ENCRYPTED_KEY\\e3I9y05piZysUSS/cBOJHII/IF68Xwtb9JXXocjC127WSnWklDplOiGstRiuKapOYJTEWOmjoJD5NHhpUV6OAQ==\\";
 
             case 401:
                 return "\\\\i2b2_DIAG\\i2b2\\Diagnoses\\Mental Disorders (290-319)\\Non-psychotic disorders (300-316)\\(309) Adjustment reaction\\(309-8) Other specified adjustmen~\\(309-81) Prolonged posttraumatic ~\\";
