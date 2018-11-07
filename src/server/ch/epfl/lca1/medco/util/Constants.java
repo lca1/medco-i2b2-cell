@@ -44,10 +44,12 @@ public class Constants {
 
     /**
      * Regex patterns that matches query keys with encrypted term
+     * Group 1: encrypted value
+     * Group 2: user's public key
      * todo: replace path encrypted / tagged
      */
     public static final Pattern REGEX_QUERY_KEY_ENC =
-            Pattern.compile("^\\s*\\\\\\\\" + CONCEPT_KEY_ENCRYPTED_FLAG + "\\\\([a-zA-Z0-9+/=]+)(\\\\)?\\s*$");
+            Pattern.compile("^\\s*\\\\\\\\" + CONCEPT_KEY_ENCRYPTED_FLAG + "\\\\([a-zA-Z0-9_=-]+)\\\\([a-zA-Z0-9_=-]+)(\\\\)?\\s*$");
 
 
     /**
@@ -64,4 +66,3 @@ public class Constants {
 
     
 }
-

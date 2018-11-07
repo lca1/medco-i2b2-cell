@@ -7,6 +7,7 @@ import edu.harvard.i2b2.crc.datavo.pm.RolesType;
 public class UserInformation {
 
     private MedCoI2b2MessageHeader auth;
+    private String userPublicKey;
 
 
     public MedCoI2b2MessageHeader getAuth() {
@@ -39,7 +40,11 @@ public class UserInformation {
     }
 
     public String getUserPublicKey() {
-        return "eQviK90cvJ2lRx8ox6GgQKFmOtbgoG9RXa7UnmemtRA=";
+        return this.userPublicKey;
+    }
+
+    public void setUserPublicKey(String userPublicKey) {
+        this.userPublicKey = userPublicKey;
     }
 
 }

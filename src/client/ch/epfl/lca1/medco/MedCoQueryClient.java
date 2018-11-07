@@ -33,6 +33,8 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public class MedCoQueryClient {
 
+    public static final String TEST_CLIENT_SEC_KEY = "iqLQz3zMlRjCyBrg4+303hsxL7F5vDtIaBxO0oc7gQA=";
+
 //    static void  disableCertificateValidation() {
 //
 //        // Create a trust manager that does not validate certificate chains
@@ -103,11 +105,6 @@ public class MedCoQueryClient {
         for (int rep = 0; rep < numRepetitions; rep++) {
             final int repFinal = rep;
 
-            // generate request
-            MedCoI2b2MessageHeader auth = new MedCoI2b2MessageHeader(domain, projectId, username, false, 0, password);
-            List<List<String>> parsedQuery = parseQuery(Integer.parseInt(queryId), querySHRINE);
-            I2B2QueryRequest request = new I2B2QueryRequest(auth);
-            request.setQueryDefinition(queryName, parsedQuery);
 
             // make request to every specified servers in a thread
             final UnlynxDecrypt decrypt = new UnlynxDecrypt();
@@ -116,6 +113,11 @@ public class MedCoQueryClient {
             for (int i = 0; i < serversUrl.length; i++) {
                 final int i_cpy = i;
                 queryThreads[i] = new Thread(() -> {
+                    // generate request todo: generated domain for each node
+                    MedCoI2b2MessageHeader auth = new MedCoI2b2MessageHeader(domain + i_cpy, projectId, username, false, 0, password);
+                    List<List<String>> parsedQuery = parseQuery(Integer.parseInt(queryId), querySHRINE);
+                    I2B2QueryRequest request = new I2B2QueryRequest(auth);
+                    request.setQueryDefinition(queryName, parsedQuery);
                     try {
 
                         //todo: do better
@@ -133,7 +135,7 @@ public class MedCoQueryClient {
                         System.err.println("Query results for node " + serversUrl[i_cpy] + ", id " + i_cpy + ", iter " + repFinal + ":\n" +
                                 " - pub key used: " + results.getValue0() + "\n" +
                                 " - enc result: " + results.getValue1() + "\n" +
-                                " - dec result: " + decrypt.decryptInt(results.getValue1(), MedCoQueryRequestDelegate.clientSeckey) + "\n" +
+                                " - dec result: " + decrypt.decryptInt(results.getValue1(), TEST_CLIENT_SEC_KEY) + "\n" +
                                 " - times:" + results.getValue2() + "\n");
                     } catch (Exception e) {
                         e.printStackTrace();
@@ -479,8 +481,8 @@ public class MedCoQueryClient {
         switch (nb) {
 
             case 400: // medco new loader test query
-                return "\\\\ENCRYPTED_KEY\\e3I9y05piZysUSS/cBOJHII/IF68Xwtb9JXXocjC127WSnWklDplOiGstRiuKapOYJTEWOmjoJD5NHhpUV6OAQ==\\";
-
+//                return "\\\\ENCRYPTED_KEY\\e3I9y05piZysUSS/cBOJHII/IF68Xwtb9JXXocjC127WSnWklDplOiGstRiuKapOYJTEWOmjoJD5NHhpUV6OAQ==\\";
+                return "\\\\ENCRYPTED_KEY\\7lP3z3YbMbRkKldDK8v0ze1jxHRkT0BsjWwc0CFTcVd1HxNZrJMhEIb9R6Wu6afCxIYQ0dLa/7ni3XnWRzW9SQ==\\";
             case 401:
                 return "\\\\i2b2_DIAG\\i2b2\\Diagnoses\\Mental Disorders (290-319)\\Non-psychotic disorders (300-316)\\(309) Adjustment reaction\\(309-8) Other specified adjustmen~\\(309-81) Prolonged posttraumatic ~\\";
 

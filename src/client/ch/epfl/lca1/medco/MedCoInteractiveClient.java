@@ -160,7 +160,7 @@ public class MedCoInteractiveClient {
                     System.err.println("Query results for node " + serversUrl[i] + ", id " + i + ", iter " + repFinal + ":\n" +
                             " - pub key used: " + results[i].getValue0() + "\n" +
                             " - enc result: " + results[i].getValue1() + "\n" +
-                            " - dec result: " + decrypt.decryptInt(results[i].getValue1(), MedCoQueryRequestDelegate.clientSeckey) + "\n" +
+                            " - dec result: " + decrypt.decryptInt(results[i].getValue1(), MedCoQueryClient.TEST_CLIENT_SEC_KEY) + "\n" +
                             " - times:" + results[i].getValue2() + "\n");
                 } catch (Exception e) {
                     e.printStackTrace();

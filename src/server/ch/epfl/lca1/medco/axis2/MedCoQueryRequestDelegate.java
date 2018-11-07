@@ -21,7 +21,6 @@ import java.io.StringWriter;
  */
 public class MedCoQueryRequestDelegate {
     // todo: from configuration add timeout entry specific to unlynx
-    // todo: hardcoded client keys for experiment, must be extracted from the query
 
     /**
      * XML object factory.
@@ -33,9 +32,6 @@ public class MedCoQueryRequestDelegate {
      * MedCo utility & configuration.
      */
     private static MedCoUtil medCoUtil = MedCoUtil.getInstance();
-
-	public static final String clientPubKey = "eQviK90cvJ2lRx8ox6GgQKFmOtbgoG9RXa7UnmemtRA=";
-	public static final String clientSeckey = "iqLQz3zMlRjCyBrg4+303hsxL7F5vDtIaBxO0oc7gQA=";
 
 	/**
      * Handles the MedCo request by calling the class implementing the workflow.

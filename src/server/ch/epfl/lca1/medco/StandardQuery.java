@@ -103,9 +103,10 @@ public class StandardQuery {
 
         // retrieve the encrypted query terms
         timers.get("steps").start("Query parsing/splitting");
-        List<String> encryptedQueryItems = getEncryptedQueryTerms();
+        List<String> encryptedQueryItems = getEncryptedQueryTermsAndSetUserPubKey(user);
         timers.get("steps").stop();
 
+        // todo: deprecate this, or use it for other purpose
         // intercept test query from SHRINE and bypass unlynx
         if (encryptedQueryItems.contains(Constants.CONCEPT_NAME_TEST_FLAG)) {
             Logger.info("Intercepted SHRINE status query (" + queryRequest.getQueryName() + ").");
@@ -189,7 +190,7 @@ public class StandardQuery {
     /**
      * @return the list of encrypted terms from the queryRequest in top-bottom order.
      */
-    private List<String> getEncryptedQueryTerms() {
+    private List<String> getEncryptedQueryTermsAndSetUserPubKey(UserInformation user) {
         QueryDefinitionType qd = queryRequest.getQueryDefinition();
         List<String> extractedItems = new ArrayList<>();
 
@@ -202,6 +203,10 @@ public class StandardQuery {
                 // check if item is clear or encrypted, extract and generate predicate if yes
                 Matcher medcoKeyMatcher = Constants.REGEX_QUERY_KEY_ENC.matcher(panel.getItem().get(i).getItemKey());
                 if (medcoKeyMatcher.matches()) {
+                    if (user.getUserPublicKey() == null) {
+                        user.setUserPublicKey(medcoKeyMatcher.group(2));
+                        Logger.info("Extracted user public key: " + user.getUserPublicKey());
+                    }
                     extractedItems.add(medcoKeyMatcher.group(1));
                     Logger.debug("Returned item " + extractedItems.get(extractedItems.size() - 1) + "; panel=" + p + ", item=" + i);
                 }
