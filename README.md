@@ -1,17 +1,11 @@
-#
+## Documentation
 
-compiled files go into dist
-install: copy using only the jboss home
+MedCo documention is centralized in a set of github-pages: [medco-documentation](https://lca1.github.io/medco-documentation/index.html).
 
-dependencies
-list
-+ specials i2b2: i2b2common-core (how to generate)
-i2b2 messages jaxb (how to generate))
+## Version
 
-data sql: made by docker in deployment
+The version in the `master`-branch is stable and has no incompatible changes.
 
+## License
 
-i2b2 version 1.7.08.x
-get 2 jars of dependencies : i2b2 common, crc core
-
-check overlap of libs copied into lib of axis2
+*medco-i2b2-cell* is licensed under a End User Software License Agreement ('EULA') for non-commercial use. If you need more information, please contact us.
