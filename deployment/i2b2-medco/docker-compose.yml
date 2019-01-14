@@ -1,7 +1,7 @@
 version: '3.5'
 services:
   i2b2-medco:
-    image: medco/i2b2-medco:v0.1
+    image: medco/i2b2-medco:dev
     build:
       context: ../..
       dockerfile: deployment/i2b2-medco/Dockerfile
