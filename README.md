@@ -1,11 +1,7 @@
 ## Documentation
-
-MedCo documention is centralized in a set of github-pages: [medco-documentation](https://lca1.github.io/medco-documentation/index.html).
-
-## Version
-
-The version in the `master`-branch is stable and has no incompatible changes.
+MedCo documentation is centralized on the following website: 
+[MedCo I2b2 Cell](https://medco.epfl.ch/documentation/developer/components/medco-i2b2-cell.html).
 
 ## License
-
-*medco-i2b2-cell* is licensed under a End User Software License Agreement ('EULA') for non-commercial use. If you need more information, please contact us.
+*medco-i2b2-cell* is licensed under a End User Software License Agreement ('EULA') for non-commercial use.
+If you need more information, please contact us.
